@@ -7,7 +7,7 @@ from pathlib import Path
 from zipfile import ZipFile
 
 import click
-import httpx
+import httpx2
 import yaml
 
 from .version_comparator import VersionComparator
@@ -63,7 +63,7 @@ def download_repository(
 
     Raises:
         ValueError: If the repository URL is unsupported or invalid.
-        httpx.HTTPError: If the repository archive cannot be downloaded.
+        httpx2.HTTPError: If the repository archive cannot be downloaded.
     """
     from astrbot.core.repository import GitHubRepository
 
@@ -82,7 +82,7 @@ def download_repository(
         if proxy:
             download_url = f"{proxy.rstrip('/')}/{download_url}"
 
-        with httpx.Client(follow_redirects=True, trust_env=True) as client:
+        with httpx2.Client(http2=True, follow_redirects=True, trust_env=True) as client:
             response = client.get(download_url)
             response.raise_for_status()
             zip_content = BytesIO(response.content)
@@ -159,7 +159,7 @@ def build_plug_list(plugins_dir: Path) -> list:
     # Get online plugin list
     online_plugins_dict = {}
     try:
-        with httpx.Client() as client:
+        with httpx2.Client(http2=True) as client:
             resp = client.get("https://api.soulter.top/astrbot/plugins")
             resp.raise_for_status()
             data = resp.json()

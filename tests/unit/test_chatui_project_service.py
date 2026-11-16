@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
-import httpx
+import httpx2
 import pytest
 import pytest_asyncio
 from fastapi import FastAPI
@@ -503,8 +503,8 @@ async def test_workspace_routes_use_session_query(session_workspace_service, ses
     expected_session = session_id or "default"
     query = {} if session_id is None else {"session_id": session_id}
     base = f"/api/v1/chat/projects/{project.project_id}/workspace"
-    transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+    transport = httpx2.ASGITransport(app=app)
+    async with httpx2.AsyncClient(transport=transport, base_url="http://test") as client:
         listing = await client.get(f"{base}/files", params=query)
         assert listing.status_code == 200
         assert {entry["name"] for entry in listing.json()["data"]["entries"]} == {

@@ -9,7 +9,7 @@ from datetime import timedelta
 from pathlib import Path, PureWindowsPath
 from typing import Any, Generic
 
-import httpx
+import httpx2
 from tenacity import (
     before_sleep_log,
     retry,
@@ -93,6 +93,32 @@ _DENIED_DOCKER_ARGS = frozenset(
     }
 )
 _STDIO_ALLOWLIST_ENV = "ASTRBOT_MCP_STDIO_ALLOWED_COMMANDS"
+
+
+def _create_mcp_http_client(
+    headers: dict[str, str] | None = None,
+    timeout: Any = None,
+    auth: httpx2.Auth | None = None,
+) -> httpx2.AsyncClient:
+    """Create an HTTP/2 client for MCP transports using legacy timeout objects.
+
+    Args:
+        headers: Headers supplied by the MCP transport.
+        timeout: An httpx or httpx2 timeout supplied by the MCP SDK.
+        auth: Optional HTTP authentication handler.
+
+    Returns:
+        An httpx2 client with numeric timeouts and HTTP/2 support.
+    """
+    return httpx2.AsyncClient(
+        headers=headers,
+        timeout=httpx2.Timeout(**timeout.as_dict())
+        if timeout is not None
+        else httpx2.Timeout(30, read=300),
+        auth=auth,
+        http2=True,
+    )
+
 
 try:
     import anyio
@@ -551,6 +577,7 @@ class MCPClient:
                     headers=cfg.get("headers", {}),
                     timeout=cfg.get("timeout", 5),
                     sse_read_timeout=cfg.get("sse_read_timeout", 60 * 5),
+                    httpx_client_factory=_create_mcp_http_client,
                 )
                 streams = await self.exit_stack.enter_async_context(
                     self._streams_context,
@@ -576,13 +603,15 @@ class MCPClient:
                         headers=cfg.get("headers", {}),
                         timeout=timeout,
                         sse_read_timeout=sse_read_timeout,
+                        httpx_client_factory=_create_mcp_http_client,
                         terminate_on_close=cfg.get("terminate_on_close", True),
                     )
                 elif streamable_http_client:
                     http_client = await self.exit_stack.enter_async_context(
-                        httpx.AsyncClient(
+                        httpx2.AsyncClient(
+                            http2=True,
                             headers=cfg.get("headers", {}),
-                            timeout=httpx.Timeout(
+                            timeout=httpx2.Timeout(
                                 timeout_seconds,
                                 read=sse_read_timeout_seconds,
                             ),

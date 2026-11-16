@@ -151,7 +151,7 @@ def test_create_http_client_uses_openai_httpx_module(monkeypatch):
     assert captured["httpx_module"] is fake_httpx_module
 
 
-def test_create_http_client_falls_back_to_global_httpx_module(monkeypatch):
+def test_create_http_client_falls_back_to_global_httpx2_module(monkeypatch):
     captured: dict[str, object] = {}
 
     def fake_create_proxy_client(
@@ -181,7 +181,7 @@ def test_create_http_client_falls_back_to_global_httpx_module(monkeypatch):
     provider = ProviderOpenAIOfficial.__new__(ProviderOpenAIOfficial)
     provider._create_http_client({"proxy": ""})
 
-    assert captured["httpx_module"] is openai_source_module.httpx
+    assert captured["httpx_module"] is openai_source_module.httpx2
 
 
 @pytest.mark.asyncio

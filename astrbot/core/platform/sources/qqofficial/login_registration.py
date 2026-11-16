@@ -6,7 +6,7 @@ from dataclasses import dataclass
 from typing import Any
 from urllib.parse import quote
 
-import httpx
+import httpx2
 from Crypto.Cipher import AES
 
 DEFAULT_QQOFFICIAL_BIND_HOST = "q.qq.com"
@@ -63,7 +63,7 @@ async def _post_json(
     payload: dict[str, Any],
     timeout_ms: int,
 ) -> dict[str, Any]:
-    async with httpx.AsyncClient(timeout=timeout_ms / 1000) as client:
+    async with httpx2.AsyncClient(http2=True, timeout=timeout_ms / 1000) as client:
         response = await client.post(
             url,
             json=payload,

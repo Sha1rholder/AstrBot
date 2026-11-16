@@ -6,7 +6,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock
 
-import httpx
+import httpx2
 import pytest
 import pytest_asyncio
 
@@ -43,8 +43,8 @@ def _temp_files(tmp_path: Path) -> list[Path]:
 async def _use_mock_transport(provider: ProviderDeepSeekSTTAPI, handler) -> None:
     headers = provider.client.headers
     await provider.client.aclose()
-    provider.client = httpx.AsyncClient(
-        transport=httpx.MockTransport(handler),
+    provider.client = httpx2.AsyncClient(
+        transport=httpx2.MockTransport(handler),
         headers=headers,
     )
 
@@ -110,11 +110,11 @@ async def test_deepseek_stt_request_uses_bearer_auth_and_only_multipart_file(
 ):
     captured = {}
 
-    async def handle_request(request: httpx.Request):
+    async def handle_request(request: httpx2.Request):
         captured["url"] = str(request.url)
         captured["headers"] = request.headers
         captured["body"] = await request.aread()
-        return httpx.Response(
+        return httpx2.Response(
             200,
             json={"request_id": "request-1", "text": "转写结果", "duration_ms": 10},
         )
@@ -152,7 +152,7 @@ async def test_deepseek_stt_returns_empty_transcription_without_placeholder(
     provider_factory, tmp_path, text
 ):
     async def handle_request(_request):
-        return httpx.Response(200, json={"text": text})
+        return httpx2.Response(200, json={"text": text})
 
     provider = provider_factory()
     await _use_mock_transport(provider, handle_request)
@@ -176,7 +176,7 @@ async def test_deepseek_stt_rejects_malformed_success_responses(
     provider_factory, tmp_path, payload
 ):
     async def handle_request(_request):
-        return httpx.Response(200, json=payload)
+        return httpx2.Response(200, json=payload)
 
     provider = provider_factory()
     await _use_mock_transport(provider, handle_request)
@@ -190,7 +190,7 @@ async def test_deepseek_stt_rejects_malformed_success_responses(
 @pytest.mark.asyncio
 async def test_deepseek_stt_rejects_non_json_response(provider_factory, tmp_path):
     async def handle_request(_request):
-        return httpx.Response(200, text="not JSON secret-key")
+        return httpx2.Response(200, text="not JSON secret-key")
 
     provider = provider_factory()
     await _use_mock_transport(provider, handle_request)
@@ -208,7 +208,7 @@ async def test_deepseek_stt_http_errors_do_not_leak_response_content(
     provider_factory, tmp_path, status
 ):
     async def handle_request(_request):
-        return httpx.Response(status, json={"error": "secret-key private text"})
+        return httpx2.Response(status, json={"error": "secret-key private text"})
 
     provider = provider_factory()
     await _use_mock_transport(provider, handle_request)
@@ -226,7 +226,7 @@ async def test_deepseek_stt_timeout_is_reported_without_sensitive_details(
     provider_factory, tmp_path
 ):
     async def handle_request(_request):
-        raise httpx.ReadTimeout("secret-key timed out")
+        raise httpx2.ReadTimeout("secret-key timed out")
 
     provider = provider_factory()
     await _use_mock_transport(provider, handle_request)
@@ -247,7 +247,7 @@ async def test_deepseek_stt_missing_and_empty_files_do_not_send_requests(
     async def handle_request(_request):
         nonlocal request_count
         request_count += 1
-        return httpx.Response(200, json={"text": "unexpected"})
+        return httpx2.Response(200, json={"text": "unexpected"})
 
     provider = provider_factory()
     await _use_mock_transport(provider, handle_request)
@@ -277,7 +277,7 @@ async def test_deepseek_stt_conversion_failure_cleans_temp_and_preserves_origina
     async def handle_request(_request):
         nonlocal request_count
         request_count += 1
-        return httpx.Response(200, json={"text": "unexpected"})
+        return httpx2.Response(200, json={"text": "unexpected"})
 
     await _use_mock_transport(provider, handle_request)
     audio_path = tmp_path / "eight-bit.wav"
@@ -297,9 +297,9 @@ async def test_deepseek_stt_converts_to_mono_16khz_16bit_pcm_before_upload(
 ):
     captured = {}
 
-    async def handle_request(request: httpx.Request):
+    async def handle_request(request: httpx2.Request):
         captured["body"] = await request.aread()
-        return httpx.Response(200, json={"text": "converted"})
+        return httpx2.Response(200, json={"text": "converted"})
 
     provider = provider_factory()
     await _use_mock_transport(provider, handle_request)
@@ -340,7 +340,7 @@ async def test_deepseek_stt_rejects_audio_over_size_limit_without_request(
     async def handle_request(_request):
         nonlocal request_count
         request_count += 1
-        return httpx.Response(200, json={"text": "unexpected"})
+        return httpx2.Response(200, json={"text": "unexpected"})
 
     provider = provider_factory()
     await _use_mock_transport(provider, handle_request)
@@ -359,11 +359,11 @@ async def test_deepseek_stt_rejects_audio_over_size_limit_without_request(
 async def test_deepseek_stt_allows_exact_size_limit(provider_factory, tmp_path):
     request_count = 0
 
-    async def handle_request(request: httpx.Request):
+    async def handle_request(request: httpx2.Request):
         nonlocal request_count
         request_count += 1
         assert len(await request.aread()) > 8 * 1024 * 1024
-        return httpx.Response(200, json={"text": "boundary"})
+        return httpx2.Response(200, json={"text": "boundary"})
 
     provider = provider_factory()
     await _use_mock_transport(provider, handle_request)
@@ -389,7 +389,7 @@ async def test_deepseek_stt_enforces_duration_boundary(
     async def handle_request(_request):
         nonlocal request_count
         request_count += 1
-        return httpx.Response(200, json={"text": "boundary"})
+        return httpx2.Response(200, json={"text": "boundary"})
 
     provider = provider_factory()
     await _use_mock_transport(provider, handle_request)
@@ -408,9 +408,9 @@ async def test_deepseek_stt_enforces_duration_boundary(
 async def test_deepseek_stt_request_failure_cleans_converted_temp_and_preserves_original(
     provider_factory, tmp_path, mock_ensure_wav
 ):
-    async def handle_request(request: httpx.Request):
+    async def handle_request(request: httpx2.Request):
         await request.aread()
-        return httpx.Response(400, json={"error": "invalid audio"})
+        return httpx2.Response(400, json={"error": "invalid audio"})
 
     provider = provider_factory()
     await _use_mock_transport(provider, handle_request)
@@ -434,7 +434,7 @@ async def test_deepseek_stt_cancellation_cleans_temp_and_preserves_original(
     async def handle_request(_request):
         request_started.set()
         await asyncio.Event().wait()
-        return httpx.Response(200, json={"text": "unreachable"})
+        return httpx2.Response(200, json={"text": "unreachable"})
 
     provider = provider_factory()
     await _use_mock_transport(provider, handle_request)
@@ -505,10 +505,10 @@ async def test_deepseek_stt_cancellation_during_conversion_kills_ffmpeg_and_clea
 async def test_deepseek_stt_concurrent_conversions_use_unique_temp_files(
     provider_factory, tmp_path, mock_ensure_wav
 ):
-    async def handle_request(request: httpx.Request):
+    async def handle_request(request: httpx2.Request):
         await request.aread()
         await asyncio.sleep(0.01)
-        return httpx.Response(200, json={"text": "concurrent"})
+        return httpx2.Response(200, json={"text": "concurrent"})
 
     provider = provider_factory()
     await _use_mock_transport(provider, handle_request)

@@ -8,7 +8,7 @@ from contextlib import asynccontextmanager, contextmanager
 from pathlib import Path
 from typing import Any
 
-import httpx
+import httpx2
 from fastapi import FastAPI, HTTPException, Request, WebSocket
 from fastapi.encoders import jsonable_encoder
 from fastapi.responses import FileResponse, JSONResponse, Response
@@ -218,7 +218,7 @@ class DashboardWebSocket:
 
 
 class AdapterTestHeaders:
-    def __init__(self, headers: httpx.Headers) -> None:
+    def __init__(self, headers: httpx2.Headers) -> None:
         self._headers = headers
 
     def getlist(self, key: str) -> list[str]:
@@ -241,7 +241,7 @@ class AdapterTestHeaders:
 
 
 class AdapterTestResponse:
-    def __init__(self, response: httpx.Response) -> None:
+    def __init__(self, response: httpx2.Response) -> None:
         self._response = response
         self.status_code = response.status_code
         self.headers = AdapterTestHeaders(response.headers)
@@ -258,8 +258,8 @@ class AdapterTestResponse:
 
 class AdapterTestClient:
     def __init__(self, app: FastAPI) -> None:
-        self._client = httpx.AsyncClient(
-            transport=httpx.ASGITransport(app=app),
+        self._client = httpx2.AsyncClient(
+            transport=httpx2.ASGITransport(app=app),
             base_url="http://testserver",
         )
 

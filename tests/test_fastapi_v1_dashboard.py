@@ -12,7 +12,7 @@ from pathlib import Path
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, Mock
 
-import httpx
+import httpx2
 import jwt
 import pytest
 import pytest_asyncio
@@ -1044,8 +1044,8 @@ def asgi_app(fake_core_lifecycle, fake_db: FakeDb):
 
 @pytest_asyncio.fixture
 async def asgi_client(asgi_app):
-    transport = httpx.ASGITransport(app=asgi_app)
-    async with httpx.AsyncClient(
+    transport = httpx2.ASGITransport(app=asgi_app)
+    async with httpx2.AsyncClient(
         transport=transport,
         base_url="http://testserver",
     ) as client:
@@ -1183,8 +1183,8 @@ async def test_version_routes_return_startup_runtime_snapshot(
     expected_sandbox = {"backend": "bubblewrap", "status": status}
     if status == "unavailable":
         expected_sandbox["error"] = error
-    transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(
+    transport = httpx2.ASGITransport(app=app)
+    async with httpx2.AsyncClient(
         transport=transport, base_url="http://testserver"
     ) as client:
         for path in ("/api/v1/stats/version", "/api/stat/version"):
@@ -1232,8 +1232,8 @@ async def test_public_versions_route_uses_static_folder(
         jwt_secret=JWT_SECRET,
         static_folder=str(static_folder),
     )
-    transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(
+    transport = httpx2.ASGITransport(app=app)
+    async with httpx2.AsyncClient(
         transport=transport,
         base_url="http://testserver",
     ) as client:
@@ -1257,7 +1257,7 @@ def test_fastapi_app_adapter_registers_on_app_state():
 
 @pytest.mark.asyncio
 async def test_v1_scope_dependencies_accept_dashboard_cookie(
-    asgi_client: httpx.AsyncClient,
+    asgi_client: httpx2.AsyncClient,
 ):
     token = jwt.encode(
         {"username": "fastapi-v1-cookie-test"},
@@ -1277,7 +1277,7 @@ async def test_v1_scope_dependencies_accept_dashboard_cookie(
 
 
 @pytest.mark.asyncio
-async def test_v1_openapi_is_served_by_fastapi(asgi_client: httpx.AsyncClient):
+async def test_v1_openapi_is_served_by_fastapi(asgi_client: httpx2.AsyncClient):
     response = await asgi_client.get("/api/v1/openapi.json")
 
     assert response.status_code == 200
@@ -1382,8 +1382,8 @@ async def test_dashboard_static_dist_files_are_served(
         jwt_secret=JWT_SECRET,
         static_folder=str(static_folder),
     )
-    transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(
+    transport = httpx2.ASGITransport(app=app)
+    async with httpx2.AsyncClient(
         transport=transport,
         base_url="http://testserver",
     ) as client:
@@ -1465,8 +1465,8 @@ async def test_dashboard_index_clears_legacy_cache_only_for_desktop_bundle(
         jwt_secret=JWT_SECRET,
         static_folder=str(static_folder),
     )
-    transport = httpx.ASGITransport(app=app)
-    async with httpx.AsyncClient(
+    transport = httpx2.ASGITransport(app=app)
+    async with httpx2.AsyncClient(
         transport=transport,
         base_url="http://testserver",
     ) as client:
@@ -1522,7 +1522,7 @@ async def test_v1_backup_download_accepts_bearer_token(
 
 
 @pytest.mark.asyncio
-async def test_v1_backup_path_rejects_traversal(asgi_client: httpx.AsyncClient):
+async def test_v1_backup_path_rejects_traversal(asgi_client: httpx2.AsyncClient):
     download_response = await asgi_client.get(
         "/api/v1/backups/%2E%2E/secret.zip",
         params={"token": "demo"},
@@ -1542,7 +1542,7 @@ async def test_v1_backup_path_rejects_traversal(asgi_client: httpx.AsyncClient):
 
 @pytest.mark.asyncio
 async def test_v1_openapi_uses_pydantic_request_bodies(
-    asgi_client: httpx.AsyncClient,
+    asgi_client: httpx2.AsyncClient,
 ):
     response = await asgi_client.get("/api/v1/openapi.json")
 
@@ -1579,7 +1579,7 @@ async def test_v1_openapi_uses_pydantic_request_bodies(
 
 @pytest.mark.asyncio
 async def test_v1_knowledge_base_create_validation_uses_api_error_shape(
-    asgi_client: httpx.AsyncClient,
+    asgi_client: httpx2.AsyncClient,
 ):
     headers = _jwt_headers()
 
@@ -1605,7 +1605,7 @@ async def test_v1_knowledge_base_create_validation_uses_api_error_shape(
 
 
 @pytest.mark.asyncio
-async def test_v1_conversation_path_id_allows_slash(asgi_client: httpx.AsyncClient):
+async def test_v1_conversation_path_id_allows_slash(asgi_client: httpx2.AsyncClient):
     response = await asgi_client.get(
         "/api/v1/conversations/conversation%2Fwith%2Fslash",
         params={"user_id": "webchat:FriendMessage:webchat!user!session-1"},
@@ -1620,7 +1620,7 @@ async def test_v1_conversation_path_id_allows_slash(asgi_client: httpx.AsyncClie
 
 @pytest.mark.asyncio
 async def test_v1_conversation_list_preserves_history_by_default(
-    asgi_client: httpx.AsyncClient,
+    asgi_client: httpx2.AsyncClient,
     fake_core_lifecycle,
 ):
     response = await asgi_client.get(
@@ -1639,7 +1639,7 @@ async def test_v1_conversation_list_preserves_history_by_default(
 
 @pytest.mark.asyncio
 async def test_v1_conversation_list_returns_summary_without_history(
-    asgi_client: httpx.AsyncClient,
+    asgi_client: httpx2.AsyncClient,
     fake_core_lifecycle,
 ):
     response = await asgi_client.get(
@@ -1659,7 +1659,7 @@ async def test_v1_conversation_list_returns_summary_without_history(
 
 @pytest.mark.asyncio
 async def test_legacy_conversation_list_preserves_history_by_default(
-    asgi_client: httpx.AsyncClient,
+    asgi_client: httpx2.AsyncClient,
 ):
     response = await asgi_client.get(
         "/api/conversation/list",
@@ -1674,7 +1674,7 @@ async def test_legacy_conversation_list_preserves_history_by_default(
 
 @pytest.mark.asyncio
 async def test_legacy_conversation_list_returns_summary_without_history(
-    asgi_client: httpx.AsyncClient,
+    asgi_client: httpx2.AsyncClient,
 ):
     response = await asgi_client.get(
         "/api/conversation/list",
@@ -1690,7 +1690,7 @@ async def test_legacy_conversation_list_returns_summary_without_history(
 
 @pytest.mark.asyncio
 async def test_conversation_list_normalizes_comma_separated_filters(
-    asgi_client: httpx.AsyncClient,
+    asgi_client: httpx2.AsyncClient,
     fake_core_lifecycle,
 ):
     response = await asgi_client.get(
@@ -1716,7 +1716,7 @@ async def test_conversation_list_normalizes_comma_separated_filters(
 
 @pytest.mark.asyncio
 async def test_conversation_workspace_filters_and_options(
-    asgi_client: httpx.AsyncClient,
+    asgi_client: httpx2.AsyncClient,
     fake_core_lifecycle,
 ):
     options_response = await asgi_client.get(
@@ -1749,7 +1749,7 @@ async def test_conversation_workspace_filters_and_options(
 
 @pytest.mark.asyncio
 async def test_v1_conversation_detail_requires_user_id(
-    asgi_client: httpx.AsyncClient,
+    asgi_client: httpx2.AsyncClient,
 ):
     response = await asgi_client.get(
         "/api/v1/conversations/conversation%2Fwith%2Fslash",
@@ -1761,7 +1761,7 @@ async def test_v1_conversation_detail_requires_user_id(
 
 @pytest.mark.asyncio
 async def test_dashboard_alias_conversation_detail_uses_fastapi_service(
-    asgi_client: httpx.AsyncClient,
+    asgi_client: httpx2.AsyncClient,
 ):
     response = await asgi_client.post(
         "/api/conversation/detail",
@@ -1780,7 +1780,7 @@ async def test_dashboard_alias_conversation_detail_uses_fastapi_service(
 
 @pytest.mark.asyncio
 async def test_v1_bots_matches_dashboard_platform_alias_list(
-    asgi_client: httpx.AsyncClient,
+    asgi_client: httpx2.AsyncClient,
 ):
     headers = _jwt_headers()
 
@@ -1800,7 +1800,7 @@ async def test_v1_bots_matches_dashboard_platform_alias_list(
 
 
 @pytest.mark.asyncio
-async def test_v1_bot_stats_match_platform_manager(asgi_client: httpx.AsyncClient):
+async def test_v1_bot_stats_match_platform_manager(asgi_client: httpx2.AsyncClient):
     response = await asgi_client.get("/api/v1/bots/stats", headers=_jwt_headers())
 
     assert response.status_code == 200
@@ -1811,7 +1811,7 @@ async def test_v1_bot_stats_match_platform_manager(asgi_client: httpx.AsyncClien
 
 @pytest.mark.asyncio
 async def test_v1_config_routes_can_replace_all_routes(
-    asgi_client: httpx.AsyncClient,
+    asgi_client: httpx2.AsyncClient,
     fake_core_lifecycle,
 ):
     routing = {
@@ -1839,7 +1839,7 @@ async def test_v1_config_routes_can_replace_all_routes(
 
 @pytest.mark.asyncio
 async def test_v1_active_umos_uses_session_service(
-    asgi_client: httpx.AsyncClient,
+    asgi_client: httpx2.AsyncClient,
 ):
     response = await asgi_client.get(
         "/api/v1/sessions/active-umos",
@@ -1855,7 +1855,7 @@ async def test_v1_active_umos_uses_session_service(
 
 @pytest.mark.asyncio
 async def test_v1_active_umos_filters_by_exact_platform_instance(
-    asgi_client: httpx.AsyncClient, fake_db: FakeDb,
+    asgi_client: httpx2.AsyncClient, fake_db: FakeDb,
 ):
     """Return only the requested instance's sessions to platform editors."""
     fake_db.umo_ids = ["qq:GroupMessage:1", "qq-2:GroupMessage:2"]
@@ -1868,7 +1868,7 @@ async def test_v1_active_umos_filters_by_exact_platform_instance(
 
 @pytest.mark.asyncio
 async def test_v1_sender_lookup_requires_auth_and_returns_source(
-    asgi_client: httpx.AsyncClient, fake_db: FakeDb,
+    asgi_client: httpx2.AsyncClient, fake_db: FakeDb,
 ):
     """Expose source session names without allowing unauthenticated lookup."""
     fake_db.get_umo_senders = AsyncMock(return_value=[(
@@ -1906,7 +1906,7 @@ async def test_v1_sender_lookup_requires_auth_and_returns_source(
 
 @pytest.mark.asyncio
 async def test_v1_sender_lookup_pages_results_and_validates_page(
-    asgi_client: httpx.AsyncClient, fake_db: FakeDb,
+    asgi_client: httpx2.AsyncClient, fake_db: FakeDb,
 ):
     """Pass page offsets through and hide the extra row used to detect the next page."""
     fake_db.get_umo_senders = AsyncMock(return_value=[
@@ -1931,7 +1931,7 @@ async def test_v1_sender_lookup_pages_results_and_validates_page(
 
 @pytest.mark.asyncio
 async def test_v1_system_config_update_preserves_independent_bot_provider_sections(
-    asgi_client: httpx.AsyncClient,
+    asgi_client: httpx2.AsyncClient,
     fake_core_lifecycle,
     monkeypatch: pytest.MonkeyPatch,
 ):
@@ -2174,7 +2174,7 @@ async def test_welcome_page_can_enable_local_computer_access_without_isolation(
 
 @pytest.mark.asyncio
 async def test_v1_system_config_returns_system_metadata(
-    asgi_client: httpx.AsyncClient,
+    asgi_client: httpx2.AsyncClient,
 ):
     response = await asgi_client.get(
         "/api/v1/system-config",
@@ -2190,7 +2190,7 @@ async def test_v1_system_config_returns_system_metadata(
 
 @pytest.mark.asyncio
 async def test_v1_providers_matches_dashboard_provider_alias_list(
-    asgi_client: httpx.AsyncClient,
+    asgi_client: httpx2.AsyncClient,
 ):
     headers = _jwt_headers()
 
@@ -2214,7 +2214,7 @@ async def test_v1_providers_matches_dashboard_provider_alias_list(
 
 @pytest.mark.asyncio
 async def test_v1_provider_schema_keeps_reasoning_in_model_metadata(
-    asgi_client: httpx.AsyncClient,
+    asgi_client: httpx2.AsyncClient,
     fake_core_lifecycle,
     monkeypatch: pytest.MonkeyPatch,
 ):
@@ -2249,7 +2249,7 @@ async def test_v1_provider_schema_keeps_reasoning_in_model_metadata(
 
 @pytest.mark.asyncio
 async def test_v1_provider_source_rename_updates_provider_refs(
-    asgi_client: httpx.AsyncClient,
+    asgi_client: httpx2.AsyncClient,
     fake_core_lifecycle,
     monkeypatch: pytest.MonkeyPatch,
 ):
@@ -2288,7 +2288,7 @@ async def test_v1_provider_source_rename_updates_provider_refs(
 
 @pytest.mark.asyncio
 async def test_v1_provider_update_keeps_dashboard_id_rename_behavior(
-    asgi_client: httpx.AsyncClient,
+    asgi_client: httpx2.AsyncClient,
     fake_core_lifecycle,
 ):
     response = await asgi_client.put(
@@ -2317,7 +2317,7 @@ async def test_v1_provider_update_keeps_dashboard_id_rename_behavior(
 
 @pytest.mark.asyncio
 async def test_v1_create_source_provider_strips_reasoning_metadata(
-    asgi_client: httpx.AsyncClient,
+    asgi_client: httpx2.AsyncClient,
     fake_core_lifecycle,
 ):
     response = await asgi_client.post(
@@ -2343,7 +2343,7 @@ async def test_v1_create_source_provider_strips_reasoning_metadata(
 
 @pytest.mark.asyncio
 async def test_v1_create_standalone_provider_matches_dashboard_alias_capability(
-    asgi_client: httpx.AsyncClient,
+    asgi_client: httpx2.AsyncClient,
     fake_core_lifecycle,
 ):
     response = await asgi_client.post(
@@ -2373,7 +2373,7 @@ async def test_v1_create_standalone_provider_matches_dashboard_alias_capability(
 
 @pytest.mark.asyncio
 async def test_v1_decision_provider_capability_maps_and_filters(
-    asgi_client: httpx.AsyncClient,
+    asgi_client: httpx2.AsyncClient,
     fake_core_lifecycle,
 ):
     response = await asgi_client.post(
@@ -2407,7 +2407,7 @@ async def test_v1_decision_provider_capability_maps_and_filters(
 
 @pytest.mark.asyncio
 async def test_v1_safe_provider_routes_accept_slash_ids(
-    asgi_client: httpx.AsyncClient,
+    asgi_client: httpx2.AsyncClient,
     fake_core_lifecycle,
     monkeypatch: pytest.MonkeyPatch,
 ):
@@ -2515,7 +2515,7 @@ async def test_v1_safe_provider_routes_accept_slash_ids(
 
 @pytest.mark.asyncio
 async def test_v1_safe_bot_routes_accept_slash_ids(
-    asgi_client: httpx.AsyncClient,
+    asgi_client: httpx2.AsyncClient,
     fake_core_lifecycle,
     monkeypatch: pytest.MonkeyPatch,
 ):
@@ -2561,7 +2561,7 @@ async def test_v1_safe_bot_routes_accept_slash_ids(
 
 @pytest.mark.asyncio
 async def test_v1_config_scope_includes_bot_and_provider(
-    asgi_client: httpx.AsyncClient,
+    asgi_client: httpx2.AsyncClient,
     fake_db: FakeDb,
 ):
     config_key = "abk_fastapi_v1_config"
@@ -2596,7 +2596,7 @@ async def test_v1_config_scope_includes_bot_and_provider(
 
 @pytest.mark.asyncio
 async def test_dashboard_alias_route_still_works_through_asgi_app(
-    asgi_client: httpx.AsyncClient,
+    asgi_client: httpx2.AsyncClient,
 ):
     response = await asgi_client.get("/api/stat/start-time")
 
@@ -2608,7 +2608,7 @@ async def test_dashboard_alias_route_still_works_through_asgi_app(
 
 @pytest.mark.asyncio
 async def test_v1_plugins_accept_api_key(
-    asgi_client: httpx.AsyncClient,
+    asgi_client: httpx2.AsyncClient,
     fake_db: FakeDb,
 ):
     raw_key = "abk_fastapi_v1_plugin"
@@ -2627,7 +2627,7 @@ async def test_v1_plugins_accept_api_key(
 
 @pytest.mark.asyncio
 async def test_v1_plugin_enabled_patch_calls_service(
-    asgi_client: httpx.AsyncClient,
+    asgi_client: httpx2.AsyncClient,
     fake_core_lifecycle,
 ):
     response = await asgi_client.patch(
@@ -2646,7 +2646,7 @@ async def test_v1_plugin_enabled_patch_calls_service(
 
 @pytest.mark.asyncio
 async def test_v1_plugin_version_support_check_uses_service(
-    asgi_client: httpx.AsyncClient,
+    asgi_client: httpx2.AsyncClient,
 ):
     response = await asgi_client.post(
         "/api/v1/plugins/version-support/check",
@@ -2667,7 +2667,7 @@ async def test_v1_plugin_version_support_check_uses_service(
 @pytest.mark.asyncio
 async def test_v1_plugin_validate_repo_uses_service(
     asgi_app: FastAPI,
-    asgi_client: httpx.AsyncClient,
+    asgi_client: httpx2.AsyncClient,
     monkeypatch: pytest.MonkeyPatch,
 ):
     plugin_service = asgi_app.state.services.plugins
@@ -2710,7 +2710,7 @@ async def test_v1_plugin_validate_repo_uses_service(
 @pytest.mark.asyncio
 async def test_v1_plugin_url_install_accepts_download_url_and_missing_body(
     asgi_app: FastAPI,
-    asgi_client: httpx.AsyncClient,
+    asgi_client: httpx2.AsyncClient,
     monkeypatch: pytest.MonkeyPatch,
 ):
     captured_payloads = []
@@ -2773,7 +2773,7 @@ async def test_v1_plugin_repository_install_uses_transport_route(
     transport: str,
     repository: str,
     asgi_app: FastAPI,
-    asgi_client: httpx.AsyncClient,
+    asgi_client: httpx2.AsyncClient,
     monkeypatch: pytest.MonkeyPatch,
 ):
     plugin_service = asgi_app.state.services.plugins
@@ -3432,7 +3432,7 @@ async def test_plugin_service_update_github_source_uses_plugin_repo(
 
 @pytest.mark.asyncio
 async def test_v1_plugin_update_all_hides_internal_exceptions(
-    asgi_client: httpx.AsyncClient,
+    asgi_client: httpx2.AsyncClient,
 ):
     response = await asgi_client.post(
         "/api/v1/plugins/update",
@@ -3452,7 +3452,7 @@ async def test_v1_plugin_update_all_hides_internal_exceptions(
 
 @pytest.mark.asyncio
 async def test_v1_plugin_extension_maps_nested_plugin_path(
-    asgi_client: httpx.AsyncClient,
+    asgi_client: httpx2.AsyncClient,
 ):
     response = await asgi_client.post(
         "/api/v1/plugins/extensions/astrbot_plugin_demo/api/action",
@@ -3473,7 +3473,7 @@ async def test_v1_plugin_extension_maps_nested_plugin_path(
 
 @pytest.mark.asyncio
 async def test_v1_plugin_extension_supports_astrbot_web_api(
-    asgi_client: httpx.AsyncClient,
+    asgi_client: httpx2.AsyncClient,
     fake_core_lifecycle,
 ):
     from astrbot.api.web import json_response
@@ -3542,7 +3542,7 @@ async def test_agent_runtimes_require_config_scope(
 
 @pytest.mark.asyncio
 async def test_v1_plugin_extension_astrbot_web_api_reads_form_and_files(
-    asgi_client: httpx.AsyncClient,
+    asgi_client: httpx2.AsyncClient,
     fake_core_lifecycle,
 ):
     from astrbot.api.web import PluginUploadFile, json_response
@@ -3612,7 +3612,7 @@ def test_astrbot_web_request_proxy_exposes_typed_methods():
 
 @pytest.mark.asyncio
 async def test_v1_plugin_extension_supports_quart_request_context(
-    asgi_client: httpx.AsyncClient,
+    asgi_client: httpx2.AsyncClient,
     fake_core_lifecycle,
 ):
     from quart import g as quart_g
@@ -3740,7 +3740,7 @@ async def test_v1_plugin_config_save_reports_reload_failure(
 
 @pytest.mark.asyncio
 async def test_v1_plugin_config_file_routes_reach_service_layer(
-    asgi_client: httpx.AsyncClient,
+    asgi_client: httpx2.AsyncClient,
 ):
     headers = _jwt_headers()
 
@@ -3771,7 +3771,7 @@ async def test_v1_plugin_config_file_routes_reach_service_layer(
 @pytest.mark.asyncio
 async def test_v1_safe_plugin_routes_accept_slash_ids(
     asgi_app: FastAPI,
-    asgi_client: httpx.AsyncClient,
+    asgi_client: httpx2.AsyncClient,
     monkeypatch: pytest.MonkeyPatch,
 ):
     plugin_id = "plugin/foo"
@@ -3877,7 +3877,7 @@ async def test_v1_safe_plugin_routes_accept_slash_ids(
 
 @pytest.mark.asyncio
 async def test_v1_safe_plugin_source_delete_accepts_slash_ids(
-    asgi_client: httpx.AsyncClient,
+    asgi_client: httpx2.AsyncClient,
     monkeypatch: pytest.MonkeyPatch,
 ):
     source_id = "https://example.com/source"
@@ -3911,7 +3911,7 @@ async def test_v1_safe_plugin_source_delete_accepts_slash_ids(
 @pytest.mark.asyncio
 async def test_v1_command_patch_updates_service(
     asgi_app: FastAPI,
-    asgi_client: httpx.AsyncClient,
+    asgi_client: httpx2.AsyncClient,
     monkeypatch: pytest.MonkeyPatch,
 ):
     async def fake_toggle(handler_full_name: str | None, enabled):
@@ -3947,7 +3947,7 @@ async def test_v1_command_patch_updates_service(
 )
 async def test_v1_command_permission_patch_updates_service(
     asgi_app: FastAPI,
-    asgi_client: httpx.AsyncClient,
+    asgi_client: httpx2.AsyncClient,
     monkeypatch: pytest.MonkeyPatch,
     permission: str,
 ):
@@ -3966,7 +3966,7 @@ async def test_v1_command_permission_patch_updates_service(
 @pytest.mark.asyncio
 async def test_v1_bot_type_registration_uses_platform_service(
     asgi_app: FastAPI,
-    asgi_client: httpx.AsyncClient,
+    asgi_client: httpx2.AsyncClient,
     monkeypatch: pytest.MonkeyPatch,
 ):
     async def fake_registration(platform_type: str, payload: dict):
@@ -3995,7 +3995,7 @@ async def test_v1_bot_type_registration_uses_platform_service(
 
 @pytest.mark.asyncio
 async def test_v1_token_file_is_public(
-    asgi_client: httpx.AsyncClient,
+    asgi_client: httpx2.AsyncClient,
     tmp_path: Path,
 ):
     token_file = tmp_path / "token-file.txt"
@@ -4016,7 +4016,7 @@ async def test_v1_token_file_is_public(
 @pytest.mark.asyncio
 @pytest.mark.parametrize("cached_token_state", ["valid", "expired", "consumed"])
 async def test_v1_platform_logo_refreshes_stale_tokens_and_supports_repeated_reads(
-    asgi_client: httpx.AsyncClient,
+    asgi_client: httpx2.AsyncClient,
     asgi_app,
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -4080,7 +4080,7 @@ async def test_v1_platform_logo_refreshes_stale_tokens_and_supports_repeated_rea
 
 @pytest.mark.asyncio
 async def test_v1_plugin_logo_supports_repeated_reads(
-    asgi_client: httpx.AsyncClient,
+    asgi_client: httpx2.AsyncClient,
     asgi_app,
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -4130,7 +4130,7 @@ def test_dashboard_config_aliases_are_registered_on_fastapi(asgi_app):
 
 @pytest.mark.asyncio
 async def test_v1_mcp_enabled_patch_updates_stored_active_flag(
-    asgi_client: httpx.AsyncClient,
+    asgi_client: httpx2.AsyncClient,
     fake_core_lifecycle,
 ):
     response = await asgi_client.patch(
@@ -4149,7 +4149,7 @@ async def test_v1_mcp_enabled_patch_updates_stored_active_flag(
 
 @pytest.mark.asyncio
 async def test_v1_safe_mcp_routes_accept_slash_server_names(
-    asgi_client: httpx.AsyncClient,
+    asgi_client: httpx2.AsyncClient,
     fake_core_lifecycle,
 ):
     server_name = "modelscope/demo"
@@ -4195,7 +4195,7 @@ async def test_v1_safe_mcp_routes_accept_slash_server_names(
 
 @pytest.mark.asyncio
 async def test_v1_mcp_scope_accepts_api_key(
-    asgi_client: httpx.AsyncClient,
+    asgi_client: httpx2.AsyncClient,
     fake_db: FakeDb,
 ):
     raw_key = "abk_fastapi_v1_mcp"
@@ -4217,7 +4217,7 @@ async def test_v1_mcp_scope_accepts_api_key(
 
 @pytest.mark.asyncio
 async def test_v1_mcp_list_reports_connected_runtime(
-    asgi_client: httpx.AsyncClient,
+    asgi_client: httpx2.AsyncClient,
     fake_core_lifecycle,
 ):
     fake_tools = fake_core_lifecycle.provider_manager.llm_tools
@@ -4244,7 +4244,7 @@ async def test_v1_mcp_list_reports_connected_runtime(
 @pytest.mark.asyncio
 async def test_v1_skill_scope_accepts_api_key_and_rejects_plural_scope(
     asgi_app: FastAPI,
-    asgi_client: httpx.AsyncClient,
+    asgi_client: httpx2.AsyncClient,
     fake_db: FakeDb,
     monkeypatch: pytest.MonkeyPatch,
 ):
@@ -4285,7 +4285,7 @@ async def test_v1_skill_scope_accepts_api_key_and_rejects_plural_scope(
 @pytest.mark.asyncio
 async def test_v1_safe_skill_routes_accept_slash_names(
     asgi_app: FastAPI,
-    asgi_client: httpx.AsyncClient,
+    asgi_client: httpx2.AsyncClient,
     monkeypatch: pytest.MonkeyPatch,
     tmp_path: Path,
 ):
@@ -4383,7 +4383,7 @@ async def test_v1_safe_skill_routes_accept_slash_names(
 @pytest.mark.asyncio
 async def test_v1_skill_archive_errors_return_http_status(
     asgi_app: FastAPI,
-    asgi_client: httpx.AsyncClient,
+    asgi_client: httpx2.AsyncClient,
     monkeypatch: pytest.MonkeyPatch,
 ):
     skill_service = asgi_app.state.services.skills
@@ -4459,7 +4459,7 @@ async def test_v1_skill_archive_errors_return_http_status(
 
 @pytest.mark.asyncio
 async def test_v1_safe_persona_routes_accept_slash_ids(
-    asgi_client: httpx.AsyncClient,
+    asgi_client: httpx2.AsyncClient,
     fake_core_lifecycle,
 ):
     persona_id = "persona/foo"
@@ -4494,7 +4494,7 @@ async def test_v1_safe_persona_routes_accept_slash_ids(
 
 @pytest.mark.asyncio
 async def test_v1_persona_by_id_update_preserves_explicit_null_tools_and_skills(
-    asgi_client: httpx.AsyncClient,
+    asgi_client: httpx2.AsyncClient,
     fake_core_lifecycle,
 ):
     persona_id = "persona/foo"
@@ -4517,7 +4517,7 @@ async def test_v1_persona_by_id_update_preserves_explicit_null_tools_and_skills(
 
 @pytest.mark.asyncio
 async def test_v1_persona_create_preserves_explicit_empty_tools_and_skills(
-    asgi_client: httpx.AsyncClient,
+    asgi_client: httpx2.AsyncClient,
     fake_core_lifecycle,
 ):
     persona_id = "persona-empty-capabilities"
@@ -4541,7 +4541,7 @@ async def test_v1_persona_create_preserves_explicit_empty_tools_and_skills(
 
 @pytest.mark.asyncio
 async def test_v1_im_routes_use_im_scope_and_running_platform(
-    asgi_client: httpx.AsyncClient,
+    asgi_client: httpx2.AsyncClient,
     fake_core_lifecycle,
     fake_db: FakeDb,
 ):
@@ -4573,7 +4573,7 @@ async def test_v1_im_routes_use_im_scope_and_running_platform(
 
 @pytest.mark.asyncio
 async def test_v1_platform_webhook_is_public_route(
-    asgi_client: httpx.AsyncClient,
+    asgi_client: httpx2.AsyncClient,
 ):
     response = await asgi_client.post(
         "/api/v1/webhooks/platforms/demo-hook",
@@ -4590,7 +4590,7 @@ async def test_v1_platform_webhook_is_public_route(
 
 @pytest.mark.asyncio
 async def test_v1_platform_webhook_preserves_plain_response(
-    asgi_client: httpx.AsyncClient,
+    asgi_client: httpx2.AsyncClient,
 ):
     response = await asgi_client.post(
         "/api/v1/webhooks/platforms/demo-hook",
@@ -4603,7 +4603,7 @@ async def test_v1_platform_webhook_preserves_plain_response(
 
 @pytest.mark.asyncio
 async def test_v1_platform_webhook_preserves_tuple_response(
-    asgi_client: httpx.AsyncClient,
+    asgi_client: httpx2.AsyncClient,
 ):
     response = await asgi_client.post(
         "/api/v1/webhooks/platforms/demo-hook",
@@ -4617,7 +4617,7 @@ async def test_v1_platform_webhook_preserves_tuple_response(
 
 @pytest.mark.asyncio
 async def test_v1_log_export_reports_blocked_console(
-    monkeypatch, tmp_path: Path, asgi_app, asgi_client: httpx.AsyncClient
+    monkeypatch, tmp_path: Path, asgi_app, asgi_client: httpx2.AsyncClient
 ):
     """Export drop counters even while the console cannot write its warning."""
     import threading
@@ -4662,7 +4662,7 @@ async def test_v1_log_export_reports_blocked_console(
 
 @pytest.mark.asyncio
 async def test_v1_log_export_packs_log_files_and_memory_logs(
-    monkeypatch, tmp_path: Path, asgi_app, asgi_client: httpx.AsyncClient
+    monkeypatch, tmp_path: Path, asgi_app, asgi_client: httpx2.AsyncClient
 ):
     """The archive covers data/logs, configured log files elsewhere and memory logs."""
     monkeypatch.setenv("ASTRBOT_ROOT", str(tmp_path))
@@ -4859,8 +4859,8 @@ async def test_diagnostic_export_includes_active_webui_version(
         jwt_secret=JWT_SECRET,
         static_folder=str(static_folder),
     )
-    async with httpx.AsyncClient(
-        transport=httpx.ASGITransport(app=app), base_url="http://test"
+    async with httpx2.AsyncClient(
+        transport=httpx2.ASGITransport(app=app), base_url="http://test"
     ) as client:
         response = await client.get("/api/v1/logs/export", headers=_jwt_headers())
     assert response.status_code == 200
@@ -4871,7 +4871,7 @@ async def test_diagnostic_export_includes_active_webui_version(
 
 @pytest.mark.asyncio
 async def test_v1_log_export_skips_files_that_are_not_regular(
-    monkeypatch, tmp_path: Path, asgi_client: httpx.AsyncClient
+    monkeypatch, tmp_path: Path, asgi_client: httpx2.AsyncClient
 ):
     """A symlink in the log directory must not pull in a file from elsewhere."""
     monkeypatch.setenv("ASTRBOT_ROOT", str(tmp_path))
@@ -4910,7 +4910,7 @@ async def test_v1_log_export_skips_files_that_are_not_regular(
 
 @pytest.mark.asyncio
 async def test_v1_log_export_keeps_archive_names_unique(
-    monkeypatch, tmp_path: Path, asgi_app, asgi_client: httpx.AsyncClient
+    monkeypatch, tmp_path: Path, asgi_app, asgi_client: httpx2.AsyncClient
 ):
     """Log files never take the names of the generated entries."""
     monkeypatch.setenv("ASTRBOT_ROOT", str(tmp_path))
@@ -4943,7 +4943,7 @@ async def test_v1_log_export_keeps_archive_names_unique(
 
 @pytest.mark.asyncio
 async def test_v1_log_export_refuses_when_disk_space_is_short(
-    monkeypatch, tmp_path: Path, asgi_client: httpx.AsyncClient
+    monkeypatch, tmp_path: Path, asgi_client: httpx2.AsyncClient
 ):
     monkeypatch.setenv("ASTRBOT_ROOT", str(tmp_path))
     logs_dir = tmp_path / "data" / "logs"
@@ -4963,7 +4963,7 @@ async def test_v1_log_export_refuses_when_disk_space_is_short(
 
 @pytest.mark.asyncio
 async def test_v1_log_export_runs_one_export_at_a_time(
-    monkeypatch, tmp_path: Path, asgi_app, asgi_client: httpx.AsyncClient
+    monkeypatch, tmp_path: Path, asgi_app, asgi_client: httpx2.AsyncClient
 ):
     monkeypatch.setenv("ASTRBOT_ROOT", str(tmp_path))
     lock = asgi_app.state.services.logs._export_lock

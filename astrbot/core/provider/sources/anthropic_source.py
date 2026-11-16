@@ -5,7 +5,7 @@ from collections.abc import AsyncGenerator
 from typing import Any, Literal
 
 import anthropic
-import httpx
+import httpx2
 from anthropic import AsyncAnthropic
 from anthropic.types import Message
 from anthropic.types.message_delta_usage import MessageDeltaUsage
@@ -126,8 +126,8 @@ class ProviderAnthropic(Provider):
             http_client=self._create_http_client(provider_config),
         )
 
-    def _create_http_client(self, provider_config: dict) -> httpx.AsyncClient | None:
-        """Create an HTTP client with optional proxy and system SSL trust store.
+    def _create_http_client(self, provider_config: dict) -> httpx2.AsyncClient:
+        """Create an HTTP/2 client with optional proxy and system SSL trust store.
 
         The Anthropic SDK validates ``http_client`` with
         ``isinstance(..., httpx.AsyncClient)`` against its own ``httpx`` import.
@@ -135,21 +135,25 @@ class ProviderAnthropic(Provider):
         (e.g. bundled Python + system Python), constructing the client from a
         different ``httpx`` module makes that check fail. We therefore prefer
         the SDK's own ``httpx`` module when available.
+
+        Args:
+            provider_config: Provider configuration with an optional proxy.
+
+        Returns:
+            An asynchronous client compatible with the installed Anthropic SDK.
         """
         proxy = provider_config.get("proxy", "")
-        if not proxy:
-            return None
-        httpx_module: Any = httpx
+        httpx_module: Any = httpx2
         try:
             from anthropic import _base_client as anthropic_base_client
 
             # anthropic <1.0.0 exposes the bundled httpx as ``_base_client.httpx``;
             # 1.0.0+ renamed it to ``_base_client.httpx2``. Prefer the SDK's own
-            # module in either case and fall back to the global httpx import.
+            # module in either case and fall back to the global httpx2 import.
             httpx_module = getattr(
                 anthropic_base_client,
                 "httpx",
-                getattr(anthropic_base_client, "httpx2", httpx),
+                getattr(anthropic_base_client, "httpx2", httpx2),
             )
         except ImportError:
             pass
@@ -568,7 +572,7 @@ class ProviderAnthropic(Provider):
                 ),
                 max_attempts=request_max_retries,
             )
-        except httpx.RequestError as e:
+        except httpx2.RequestError as e:
             proxy = self.provider_config.get("proxy", "")
             log_connection_failure("Anthropic", e, proxy)
             raise

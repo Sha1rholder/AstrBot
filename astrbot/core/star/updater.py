@@ -126,7 +126,7 @@ class _PluginUpdater(_RepoZipUpdater):
 
         Raises:
             ValueError: If the repository or its plugin metadata is invalid.
-            httpx.HTTPError: If the repository provider cannot be reached.
+            httpx2.HTTPError: If the repository provider cannot be reached.
         """
         try:
             normalized_url = normalize_repository_url(repo_url)

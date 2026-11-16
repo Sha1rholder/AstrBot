@@ -7,9 +7,9 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 from typing import Literal, cast
 
-import httpx
+import httpx2
 from google import genai
-from google.genai import types
+from google.genai import _api_client, types
 from google.genai.errors import APIError
 
 import astrbot.core.message.components as Comp
@@ -77,8 +77,8 @@ class ProviderGoogleGenAI(Provider):
         if self.api_base and self.api_base.endswith("/"):
             self.api_base = self.api_base[:-1]
 
-        self._http_client: httpx.AsyncClient | None = None
-        self._stale_http_clients: list[httpx.AsyncClient] = []
+        self._http_client: httpx2.AsyncClient | None = None
+        self._stale_http_clients: list[httpx2.AsyncClient] = []
         self._request_lock = asyncio.Lock()
         self._init_client()
         self.set_model(provider_config.get("model", "unknown"))
@@ -93,11 +93,12 @@ class ProviderGoogleGenAI(Provider):
             timeout=self.timeout * 1000,  # 毫秒
         )
 
-        # 强制使用 httpx 作为异步 HTTP 后端，避免 aiohttp 响应类型兼容问题 (#7564)
-        # httpx.AsyncClient 的 timeout 单位为秒（与 HttpOptions 的毫秒不同）
+        # Use an explicit HTTP client to avoid aiohttp response incompatibility
+        # (#7564). Client timeouts are in seconds, unlike HttpOptions.
         async_client_kwargs: dict = {
-            "base_url": self.api_base,
+            "base_url": self.api_base or "",
             "timeout": self.timeout,
+            "http2": True,
         }
         if proxy:
             async_client_kwargs["proxy"] = proxy
@@ -111,7 +112,9 @@ class ProviderGoogleGenAI(Provider):
         if self._http_client is not None:
             self._stale_http_clients = [self._http_client]
 
-        self._http_client = httpx.AsyncClient(**async_client_kwargs)
+        # Older GenAI SDKs validate clients and responses against legacy httpx.
+        httpx_module = getattr(_api_client, "httpx2", None) or _api_client.httpx
+        self._http_client = httpx_module.AsyncClient(**async_client_kwargs)
         http_options.httpx_async_client = self._http_client
 
         self.client = genai.Client(
@@ -1234,8 +1237,8 @@ class ProviderGoogleGenAI(Provider):
             )
         return image_data.to_data_url()
 
-    async def _close_httpx_client(self, client: httpx.AsyncClient | None) -> None:
-        """Safely close an httpx.AsyncClient, swallowing errors for idempotency."""
+    async def _close_httpx_client(self, client: httpx2.AsyncClient | None) -> None:
+        """Safely close an HTTP client, swallowing errors for idempotency."""
         if client is None:
             return
         try:
@@ -1243,10 +1246,10 @@ class ProviderGoogleGenAI(Provider):
         except Exception as e:
             # Idempotent: ignore errors from already-closed or broken clients,
             # but log at debug to aid diagnosing unexpected shutdown issues.
-            logger.debug(f"[Gemini] Ignored error while closing httpx client: {e}")
+            logger.debug(f"[Gemini] Ignored error while closing HTTP client: {e}")
 
     async def terminate(self) -> None:
-        # Close the active Gemini client (external httpx client is managed
+        # Close the active Gemini client (external HTTP client is managed
         # separately so genai.Client.aclose skips it).
         if self.client is not None:
             try:
@@ -1255,7 +1258,7 @@ class ProviderGoogleGenAI(Provider):
                 pass
             self.client = None
 
-        # Close all tracked httpx clients (stale + current).
+        # Close all tracked HTTP clients (stale + current).
         for client in self._stale_http_clients:
             await self._close_httpx_client(client)
         self._stale_http_clients.clear()

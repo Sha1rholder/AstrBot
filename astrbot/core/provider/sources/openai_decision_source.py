@@ -6,7 +6,7 @@ import math
 from collections.abc import Mapping
 from typing import Any, TypeGuard
 
-import httpx
+import httpx2
 
 from astrbot import logger
 
@@ -64,10 +64,10 @@ class OpenAIDecisionProvider(DecisionProvider):
         self,
         provider_config: dict,
         provider_settings: dict,
-        transport: httpx.AsyncBaseTransport | None = None,
+        transport: httpx2.AsyncBaseTransport | None = None,
     ) -> None:
         super().__init__(provider_config, provider_settings)
-        base_url = httpx.URL(
+        base_url = httpx2.URL(
             str(provider_config.get("api_base") or "").strip() or _DEFAULT_API_BASE
         )
         endpoint_path, separator, query = base_url.raw_path.partition(b"?")
@@ -83,7 +83,7 @@ class OpenAIDecisionProvider(DecisionProvider):
         self.api_key = provider_config.get("key", "")
         if not isinstance(self.api_key, str):
             raise ValueError("OpenAI decision API key must be a string")
-        headers = httpx.Headers(self.request_headers)
+        headers = httpx2.Headers(self.request_headers)
         if self.api_key:
             headers["Authorization"] = f"Bearer {self.api_key}"
         self.proxy = str(provider_config.get("proxy") or "").strip() or None
@@ -101,7 +101,8 @@ class OpenAIDecisionProvider(DecisionProvider):
         if self.max_concurrency <= 0:
             raise ValueError("max_concurrency must be greater than 0")
         self.request_semaphore = asyncio.Semaphore(self.max_concurrency)
-        self.client = httpx.AsyncClient(
+        self.client = httpx2.AsyncClient(
+            http2=True,
             timeout=self.timeout,
             proxy=self.proxy,
             transport=transport,
@@ -270,17 +271,17 @@ class OpenAIDecisionProvider(DecisionProvider):
             raise DecisionError(
                 f"OpenAI decision total request timed out after {self.total_timeout:g}s"
             ) from None
-        except httpx.TimeoutException as exc:
+        except httpx2.TimeoutException as exc:
             logger.warning(f"[OpenAI Decision] Request failed ({type(exc).__name__})")
             raise DecisionError(
                 f"OpenAI decision attempt timed out after {self.timeout:g}s"
             ) from None
-        except httpx.HTTPStatusError as exc:
+        except httpx2.HTTPStatusError as exc:
             logger.error(f"[OpenAI Decision] HTTP {exc.response.status_code}")
             raise DecisionError(
                 f"OpenAI decision endpoint returned HTTP {exc.response.status_code}"
             ) from None
-        except httpx.RequestError as exc:
+        except httpx2.RequestError as exc:
             logger.warning(f"[OpenAI Decision] Request failed ({type(exc).__name__})")
             raise DecisionError(
                 "OpenAI decision request failed: unable to connect "

@@ -1,6 +1,6 @@
 from pathlib import Path
 
-import httpx
+import httpx2
 
 from astrbot import logger
 from astrbot.core.utils.astrbot_path import get_astrbot_temp_path
@@ -118,7 +118,8 @@ class ProviderElevenLabsTTSAPI(TTSProvider):
         proxy = provider_config.get("proxy", "")
         if proxy:
             logger.info(f"[ElevenLabs TTS] 使用代理: {proxy}")
-        self.client = httpx.AsyncClient(
+        self.client = httpx2.AsyncClient(
+            http2=True,
             headers=self.request_headers,
             timeout=timeout,
             proxy=proxy or None,

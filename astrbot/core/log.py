@@ -397,7 +397,9 @@ class LogManager:
         "tzlocal": logging.WARNING,
         "apscheduler": logging.WARNING,
         "httpx": logging.WARNING,
+        "httpx2": logging.WARNING,
         "httpcore": logging.WARNING,
+        "httpcore2": logging.WARNING,
     }
 
     @classmethod

@@ -7,7 +7,7 @@ import time
 from pathlib import Path
 from xml.sax.saxutils import escape
 
-from httpx import AsyncClient, Timeout
+from httpx2 import AsyncClient, Timeout
 
 from astrbot import logger
 from astrbot.core.provider.headers import build_provider_headers
@@ -48,6 +48,7 @@ class OTTSProvider:
 
     async def __aenter__(self):
         self._client = AsyncClient(
+            http2=True,
             headers=self.request_headers,
             timeout=self.timeout,
             proxy=self.proxy if self.proxy else None,
@@ -150,6 +151,7 @@ class AzureNativeProvider(TTSProvider):
 
     async def __aenter__(self):
         self._client = AsyncClient(
+            http2=True,
             headers={
                 **self.request_headers,
                 "Content-Type": "application/ssml+xml",

@@ -10,7 +10,7 @@ from types import SimpleNamespace
 from urllib.parse import urlparse
 
 import certifi
-import httpx
+import httpx2
 import pytest
 
 from astrbot.core import dashboard_assets, process_restart
@@ -74,13 +74,13 @@ class _FakeStatusErrorResponse:
         self._url = url
 
     def raise_for_status(self) -> None:
-        request = httpx.Request("GET", self._url)
-        response = httpx.Response(
+        request = httpx2.Request("GET", self._url)
+        response = httpx2.Response(
             self._status_code,
             text=self._body,
             request=request,
         )
-        raise httpx.HTTPStatusError(
+        raise httpx2.HTTPStatusError(
             "status error",
             request=request,
             response=response,
@@ -305,7 +305,7 @@ def _assert_unzip_file_windows_path_normalization(
     assert captured["cleanup"] == expected_root
 
 
-def _build_fake_httpx_module(state: _FakeAsyncClientState) -> SimpleNamespace:
+def _build_fake_httpx2_module(state: _FakeAsyncClientState) -> SimpleNamespace:
     class _FakeAsyncClient:
         def __init__(self, **kwargs):
             state.init_kwargs = kwargs
@@ -327,7 +327,7 @@ def _build_fake_httpx_module(state: _FakeAsyncClientState) -> SimpleNamespace:
 
     return SimpleNamespace(
         AsyncClient=_FakeAsyncClient,
-        HTTPStatusError=httpx.HTTPStatusError,
+        HTTPStatusError=httpx2.HTTPStatusError,
     )
 
 
@@ -1260,8 +1260,8 @@ async def test_fetch_release_info_uses_httpx_client_with_env_proxy_support(
     )
     monkeypatch.setattr(
         zip_updater_module,
-        "httpx",
-        _build_fake_httpx_module(fake_async_client_state),
+        "httpx2",
+        _build_fake_httpx2_module(fake_async_client_state),
         raising=False,
     )
 
@@ -1309,8 +1309,8 @@ async def test_download_from_repo_url_uses_head_without_metadata_lookup(
     )
     monkeypatch.setattr(
         zip_updater_module,
-        "httpx",
-        _build_fake_httpx_module(fake_async_client_state),
+        "httpx2",
+        _build_fake_httpx2_module(fake_async_client_state),
         raising=False,
     )
 
@@ -1444,11 +1444,11 @@ async def test_plugin_updater_inspects_github_repository_source(
     updater = _PluginUpdater()
     requested_urls: list[str] = []
 
-    def handle_request(request: httpx.Request) -> httpx.Response:
+    def handle_request(request: httpx2.Request) -> httpx2.Response:
         requested_urls.append(str(request.url))
         if request.url.path.endswith("metadata.yaml"):
-            return httpx.Response(404)
-        return httpx.Response(
+            return httpx2.Response(404)
+        return httpx2.Response(
             200,
             text="\n".join(
                 [
@@ -1463,8 +1463,8 @@ async def test_plugin_updater_inspects_github_repository_source(
     monkeypatch.setattr(
         updater,
         "_create_httpx_client",
-        lambda timeout=30.0: httpx.AsyncClient(
-            transport=httpx.MockTransport(handle_request),
+        lambda timeout=30.0: httpx2.AsyncClient(
+            transport=httpx2.MockTransport(handle_request),
             timeout=timeout,
         ),
     )
@@ -1490,8 +1490,8 @@ async def test_plugin_updater_rejects_large_repository_metadata(
 ) -> None:
     updater = _PluginUpdater()
 
-    def handle_request(request: httpx.Request) -> httpx.Response:  # noqa: ARG001
-        return httpx.Response(
+    def handle_request(request: httpx2.Request) -> httpx2.Response:  # noqa: ARG001
+        return httpx2.Response(
             200,
             headers={"Content-Length": str(1024 * 1024 + 1)},
         )
@@ -1499,8 +1499,8 @@ async def test_plugin_updater_rejects_large_repository_metadata(
     monkeypatch.setattr(
         updater,
         "_create_httpx_client",
-        lambda timeout=30.0: httpx.AsyncClient(
-            transport=httpx.MockTransport(handle_request),
+        lambda timeout=30.0: httpx2.AsyncClient(
+            transport=httpx2.MockTransport(handle_request),
             timeout=timeout,
         ),
     )
@@ -1519,8 +1519,8 @@ def test_create_httpx_client_uses_custom_verify_setting(
 
     monkeypatch.setattr(
         zip_updater_module,
-        "httpx",
-        _build_fake_httpx_module(fake_async_client_state),
+        "httpx2",
+        _build_fake_httpx2_module(fake_async_client_state),
         raising=False,
     )
 

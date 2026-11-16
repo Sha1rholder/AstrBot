@@ -3,7 +3,7 @@ import json
 import logging
 from unittest.mock import AsyncMock, MagicMock
 
-import httpx
+import httpx2
 import pytest
 
 from astrbot.core.config.default import CONFIG_METADATA_2
@@ -37,7 +37,7 @@ def _provider(handler, **overrides) -> SystemOneDecisionProvider:
     return SystemOneDecisionProvider(
         config,
         {},
-        transport=httpx.MockTransport(handler),
+        transport=httpx2.MockTransport(handler),
     )
 
 
@@ -45,11 +45,11 @@ def _provider(handler, **overrides) -> SystemOneDecisionProvider:
 async def test_system_one_decisions_share_one_request_and_parse_all_heads():
     captured = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         captured["authorization"] = request.headers["authorization"]
         captured["custom"] = request.headers["x-test"]
         captured["body"] = json.loads(request.content)
-        return httpx.Response(
+        return httpx2.Response(
             200,
             json={
                 "model": "jev-latest",
@@ -120,9 +120,9 @@ async def test_system_one_decisions_share_one_request_and_parse_all_heads():
 async def test_system_one_resolves_api_base(api_base, expected_url):
     captured = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         captured["url"] = str(request.url)
-        return httpx.Response(
+        return httpx2.Response(
             200,
             json={"answers": {"available": {"type": "noul", "noul": 1.0}}},
         )
@@ -164,7 +164,7 @@ async def test_system_one_provider_defaults_to_two_second_timeout():
             "api_base": "https://decision.test/v1/systemone",
         },
         {},
-        transport=httpx.MockTransport(lambda request: httpx.Response(200)),
+        transport=httpx2.MockTransport(lambda request: httpx2.Response(200)),
     )
     try:
         assert provider.timeout == 2
@@ -176,9 +176,9 @@ async def test_system_one_provider_defaults_to_two_second_timeout():
 async def test_system_one_total_timeout_caps_the_request():
     async def post(*args, **kwargs):
         await asyncio.sleep(1)
-        return httpx.Response(200, json={"answers": {}})
+        return httpx2.Response(200, json={"answers": {}})
 
-    provider = _provider(lambda request: httpx.Response(500), total_timeout=0.05)
+    provider = _provider(lambda request: httpx2.Response(500), total_timeout=0.05)
     provider.client.post = AsyncMock(side_effect=post)
     try:
         with pytest.raises(DecisionError, match="total request timed out after 0.05s"):
@@ -200,15 +200,15 @@ async def test_system_one_limits_concurrent_requests():
         peak = max(peak, in_flight)
         try:
             await asyncio.sleep(0.03)
-            return httpx.Response(
+            return httpx2.Response(
                 200,
                 json={"answers": {"available": {"type": "noul", "noul": 1.0}}},
-                request=httpx.Request("POST", provider.base_url),
+                request=httpx2.Request("POST", provider.base_url),
             )
         finally:
             in_flight -= 1
 
-    provider = _provider(lambda request: httpx.Response(500), max_concurrency=2)
+    provider = _provider(lambda request: httpx2.Response(500), max_concurrency=2)
     provider.client.post = AsyncMock(side_effect=post)
     try:
         await asyncio.gather(
@@ -246,7 +246,7 @@ async def test_system_one_limits_concurrent_requests():
 )
 async def test_system_one_rejects_invalid_choice_answers(choice_answer):
     provider = _provider(
-        lambda request: httpx.Response(
+        lambda request: httpx2.Response(
             200,
             json={"answers": {"decision": choice_answer}},
         )
@@ -269,7 +269,7 @@ async def test_system_one_rejects_invalid_choice_answers(choice_answer):
 async def test_system_one_invalid_choice_reports_response_summary(caplog):
     caplog.set_level(logging.WARNING, logger="astrbot")
     provider = _provider(
-        lambda request: httpx.Response(
+        lambda request: httpx2.Response(
             200,
             json={
                 "answers": {
@@ -304,7 +304,7 @@ async def test_system_one_invalid_choice_reports_response_summary(caplog):
 async def test_system_one_normalizes_http_errors_and_closes_client(caplog):
     caplog.set_level(logging.ERROR, logger="astrbot")
     provider = _provider(
-        lambda request: httpx.Response(
+        lambda request: httpx2.Response(
             400,
             json={"state": "private-conversation"},
         )
@@ -326,12 +326,12 @@ async def test_system_one_normalizes_http_errors_and_closes_client(caplog):
 @pytest.mark.parametrize(
     ("error", "message"),
     [
-        (httpx.ReadTimeout("read timeout"), "timed out after 5s"),
-        (httpx.ConnectError("connection refused"), "unable to connect"),
+        (httpx2.ReadTimeout("read timeout"), "timed out after 5s"),
+        (httpx2.ConnectError("connection refused"), "unable to connect"),
     ],
 )
 async def test_system_one_normalizes_network_errors(error, message):
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         raise error
 
     provider = _provider(handler)
@@ -347,7 +347,7 @@ async def test_system_one_normalizes_network_errors(error, message):
 @pytest.mark.asyncio
 async def test_system_one_rejects_invalid_json():
     provider = _provider(
-        lambda request: httpx.Response(
+        lambda request: httpx2.Response(
             200,
             content=b"<html>bad gateway</html>",
             headers={"Content-Type": "text/html"},
@@ -364,7 +364,7 @@ async def test_system_one_rejects_invalid_json():
 
 @pytest.mark.asyncio
 async def test_system_one_rejects_invalid_utf8():
-    provider = _provider(lambda request: httpx.Response(200, content=b"\xff"))
+    provider = _provider(lambda request: httpx2.Response(200, content=b"\xff"))
     try:
         with pytest.raises(DecisionError, match="text encoding"):
             await provider.ask(
@@ -378,10 +378,10 @@ async def test_system_one_rejects_invalid_utf8():
 async def test_decision_provider_test_does_not_retry():
     attempts = 0
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         nonlocal attempts
         attempts += 1
-        return httpx.Response(503, json={"error": "unavailable"})
+        return httpx2.Response(503, json={"error": "unavailable"})
 
     provider = _provider(handler)
     try:
@@ -397,10 +397,10 @@ async def test_decision_provider_test_does_not_retry():
 async def test_system_one_ask_does_not_retry_by_default():
     attempts = 0
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         nonlocal attempts
         attempts += 1
-        return httpx.Response(503, json={"error": "unavailable"})
+        return httpx2.Response(503, json={"error": "unavailable"})
 
     provider = _provider(handler)
     try:
@@ -418,10 +418,10 @@ async def test_system_one_ask_does_not_retry_by_default():
 async def test_system_one_retries_only_after_the_initial_request():
     attempts = 0
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         nonlocal attempts
         attempts += 1
-        return httpx.Response(503, json={"error": "unavailable"})
+        return httpx2.Response(503, json={"error": "unavailable"})
 
     provider = _provider(handler)
     try:

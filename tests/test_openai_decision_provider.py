@@ -5,7 +5,7 @@ import traceback
 from types import MappingProxyType
 from unittest.mock import AsyncMock, MagicMock
 
-import httpx
+import httpx2
 import pytest
 
 from astrbot.core.config.default import CONFIG_METADATA_2
@@ -41,7 +41,7 @@ def _provider(handler, **overrides) -> OpenAIDecisionProvider:
         "custom_headers": {"X-Test": "yes"},
     }
     config.update(overrides)
-    return OpenAIDecisionProvider(config, {}, transport=httpx.MockTransport(handler))
+    return OpenAIDecisionProvider(config, {}, transport=httpx2.MockTransport(handler))
 
 
 def _decision(*answers) -> dict:
@@ -77,10 +77,10 @@ def _manager() -> ProviderManager:
 async def test_mixed_questions_share_one_request_and_match_answers_by_name(criteria_type):
     requests = []
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         requests.append(request)
         # Answers are deliberately returned out of question order.
-        return httpx.Response(
+        return httpx2.Response(
             200,
             json=_decision(
                 {
@@ -207,9 +207,9 @@ async def test_mixed_questions_share_one_request_and_match_answers_by_name(crite
 async def test_resolves_endpoint(api_base, expected_url):
     captured = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         captured["url"] = str(request.url)
-        return httpx.Response(200, json=_decision(_predicate("q0", 1.0)))
+        return httpx2.Response(200, json=_decision(_predicate("q0", 1.0)))
 
     provider = _provider(handler, api_base=api_base)
     try:
@@ -222,7 +222,7 @@ async def test_resolves_endpoint(api_base, expected_url):
 
 def test_requires_model_without_hardcoded_default():
     with pytest.raises(ValueError, match="requires model"):
-        _provider(lambda request: httpx.Response(200), model="")
+        _provider(lambda request: httpx2.Response(200), model="")
 
 
 @pytest.mark.asyncio
@@ -279,9 +279,9 @@ def test_requires_model_without_hardcoded_default():
 async def test_state_keeps_text_or_json_semantics(state, expected_input):
     captured = {}
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         captured["body"] = json.loads(request.content)
-        return httpx.Response(200, json=_decision(_predicate("q0", 0.5)))
+        return httpx2.Response(200, json=_decision(_predicate("q0", 0.5)))
 
     provider = _provider(handler)
     try:
@@ -347,7 +347,7 @@ async def test_rejects_unusable_questions_before_request(question):
 async def test_refusal_fails_the_whole_batch(caplog):
     caplog.set_level(logging.WARNING, logger="astrbot")
     provider = _provider(
-        lambda request: httpx.Response(
+        lambda request: httpx2.Response(
             200,
             json=_decision(_predicate("q0", 0.9), {"type": "refusal", "name": "q1"}),
         )
@@ -501,7 +501,7 @@ def _score(**overrides) -> dict:
     ],
 )
 async def test_rejects_answers_that_violate_the_contract(question, answers, message):
-    provider = _provider(lambda request: httpx.Response(200, json=_decision(*answers)))
+    provider = _provider(lambda request: httpx2.Response(200, json=_decision(*answers)))
     try:
         with pytest.raises(DecisionError, match=message):
             await provider.ask({"a": question})
@@ -512,7 +512,7 @@ async def test_rejects_answers_that_violate_the_contract(question, answers, mess
 @pytest.mark.asyncio
 async def test_non_finite_probability_in_raw_json_is_rejected():
     provider = _provider(
-        lambda request: httpx.Response(
+        lambda request: httpx2.Response(
             200,
             content=b'{"answers": [{"type": "predicate", "name": "q0", '
             b'"probability": NaN}]}',
@@ -528,7 +528,7 @@ async def test_non_finite_probability_in_raw_json_is_rejected():
 @pytest.mark.asyncio
 async def test_accepts_distribution_with_float_rounding():
     provider = _provider(
-        lambda request: httpx.Response(
+        lambda request: httpx2.Response(
             200,
             json=_decision(
                 _choice(
@@ -554,7 +554,7 @@ async def test_accepts_distribution_with_float_rounding():
     [{"answers": {"q0": {}}}, ["not", "an", "object"], {"error": "x"}],
 )
 async def test_rejects_malformed_response_body(body):
-    provider = _provider(lambda request: httpx.Response(200, json=body))
+    provider = _provider(lambda request: httpx2.Response(200, json=body))
     try:
         with pytest.raises(DecisionError, match="invalid response"):
             await provider.ask({"a": DecisionBooleanQuestion("Ok?")})
@@ -566,7 +566,7 @@ async def test_rejects_malformed_response_body(body):
 async def test_http_error_reports_status_without_body_and_closes_client(caplog):
     caplog.set_level(logging.INFO, logger="astrbot")
     provider = _provider(
-        lambda request: httpx.Response(
+        lambda request: httpx2.Response(
             400,
             json={
                 "error": {
@@ -596,12 +596,12 @@ async def test_http_error_reports_status_without_body_and_closes_client(caplog):
     ("response", "message"),
     [
         (
-            httpx.Response(
+            httpx2.Response(
                 200, content=b"<html>bad</html>", headers={"Content-Type": "text/html"}
             ),
             "invalid JSON",
         ),
-        (httpx.Response(200, content=b"\xff"), "text encoding"),
+        (httpx2.Response(200, content=b"\xff"), "text encoding"),
     ],
 )
 async def test_rejects_invalid_json(response, message):
@@ -617,12 +617,12 @@ async def test_rejects_invalid_json(response, message):
 @pytest.mark.parametrize(
     ("error", "message"),
     [
-        (httpx.ReadTimeout("read timeout"), "timed out after 5s"),
-        (httpx.ConnectError("connection refused"), "unable to connect"),
+        (httpx2.ReadTimeout("read timeout"), "timed out after 5s"),
+        (httpx2.ConnectError("connection refused"), "unable to connect"),
     ],
 )
 async def test_normalizes_network_errors(error, message):
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         raise error
 
     provider = _provider(handler)
@@ -637,10 +637,10 @@ async def test_normalizes_network_errors(error, message):
 async def test_does_not_retry_by_default_and_test_never_retries():
     attempts = 0
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         nonlocal attempts
         attempts += 1
-        return httpx.Response(503, json={"error": {"code": "unavailable"}})
+        return httpx2.Response(503, json={"error": {"code": "unavailable"}})
 
     provider = _provider(handler)
     try:
@@ -658,12 +658,12 @@ async def test_does_not_retry_by_default_and_test_never_retries():
 async def test_retries_retryable_errors_then_succeeds():
     attempts = 0
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         nonlocal attempts
         attempts += 1
         if attempts == 1:
-            return httpx.Response(503)
-        return httpx.Response(200, json=_decision(_predicate("q0", 0.4)))
+            return httpx2.Response(503)
+        return httpx2.Response(200, json=_decision(_predicate("q0", 0.4)))
 
     provider = _provider(handler)
     try:
@@ -681,10 +681,10 @@ async def test_retries_retryable_errors_then_succeeds():
 async def test_does_not_retry_client_errors():
     attempts = 0
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         nonlocal attempts
         attempts += 1
-        return httpx.Response(400)
+        return httpx2.Response(400)
 
     provider = _provider(handler)
     try:
@@ -702,10 +702,10 @@ async def test_does_not_retry_client_errors():
 async def test_total_timeout_covers_queue_and_requests():
     async def post(*args, **kwargs):
         await asyncio.sleep(1)
-        return httpx.Response(200, json=_decision(_predicate("q0", 1.0)))
+        return httpx2.Response(200, json=_decision(_predicate("q0", 1.0)))
 
     provider = _provider(
-        lambda request: httpx.Response(500), total_timeout=0.05, max_concurrency=1
+        lambda request: httpx2.Response(500), total_timeout=0.05, max_concurrency=1
     )
     provider.client.post = AsyncMock(side_effect=post)
     try:
@@ -733,13 +733,13 @@ async def test_cancellation_releases_concurrency_slot():
         if calls == 1:
             started.set()
             await asyncio.sleep(10)
-        return httpx.Response(
+        return httpx2.Response(
             200,
             json=_decision(_predicate("q0", 1.0)),
-            request=httpx.Request("POST", ENDPOINT),
+            request=httpx2.Request("POST", ENDPOINT),
         )
 
-    provider = _provider(lambda request: httpx.Response(500), max_concurrency=1)
+    provider = _provider(lambda request: httpx2.Response(500), max_concurrency=1)
     provider.client.post = AsyncMock(side_effect=post)
     try:
         task = asyncio.create_task(provider.ask({"a": DecisionBooleanQuestion("?")}))
@@ -766,15 +766,15 @@ async def test_limits_concurrent_requests():
         peak = max(peak, in_flight)
         try:
             await asyncio.sleep(0.03)
-            return httpx.Response(
+            return httpx2.Response(
                 200,
                 json=_decision(_predicate("q0", 1.0)),
-                request=httpx.Request("POST", ENDPOINT),
+                request=httpx2.Request("POST", ENDPOINT),
             )
         finally:
             in_flight -= 1
 
-    provider = _provider(lambda request: httpx.Response(500), max_concurrency=2)
+    provider = _provider(lambda request: httpx2.Response(500), max_concurrency=2)
     provider.client.post = AsyncMock(side_effect=post)
     try:
         await asyncio.gather(
@@ -790,12 +790,12 @@ async def test_limits_concurrent_requests():
 async def test_decision_service_end_to_end_through_adapter():
     bodies = []
 
-    def handler(request: httpx.Request) -> httpx.Response:
+    def handler(request: httpx2.Request) -> httpx2.Response:
         body = json.loads(request.content)
         bodies.append(body)
         question = body["questions"][0]
         if question["type"] == "choice":
-            return httpx.Response(
+            return httpx2.Response(
                 200,
                 json=_decision(
                     {
@@ -811,8 +811,8 @@ async def test_decision_service_end_to_end_through_adapter():
                 ),
             )
         if question["instructions"] == "Fail?":
-            return httpx.Response(500)
-        return httpx.Response(200, json=_decision(_predicate(question["name"], 0.6)))
+            return httpx2.Response(500)
+        return httpx2.Response(200, json=_decision(_predicate(question["name"], 0.6)))
 
     provider = _provider(handler)
     manager = _manager()
@@ -936,10 +936,10 @@ async def test_provider_manager_create_update_reload_and_connection_test(monkeyp
 
         async def post(url, **kwargs):
             sent.append(json.loads(kwargs["content"]))
-            return httpx.Response(
+            return httpx2.Response(
                 200,
                 json=_decision(_predicate("q0", 0.9)),
-                request=httpx.Request("POST", url),
+                request=httpx2.Request("POST", url),
             )
 
         reloaded.client.post = AsyncMock(side_effect=post)
@@ -954,7 +954,7 @@ async def test_provider_manager_create_update_reload_and_connection_test(monkeyp
 @pytest.mark.asyncio
 async def test_unhashable_answer_name_is_a_contract_error():
     provider = _provider(
-        lambda request: httpx.Response(
+        lambda request: httpx2.Response(
             200,
             json=_decision({"type": "predicate", "name": ["q0"], "probability": 0.5}),
         )
@@ -994,7 +994,7 @@ async def test_api_key_replaces_custom_authorization(header):
 
     def handler(request):
         captured.extend(request.headers.get_list("authorization"))
-        return httpx.Response(200, json=_decision(_predicate("q0", 0.5)))
+        return httpx2.Response(200, json=_decision(_predicate("q0", 0.5)))
 
     provider = _provider(handler, custom_headers={header: "Bearer old"})
     try:
@@ -1023,7 +1023,7 @@ def test_rejects_invalid_timeout_settings(field, value):
 )
 async def test_invalid_response_does_not_expose_content(body, caplog):
     caplog.set_level(logging.WARNING, logger="astrbot")
-    provider = _provider(lambda request: httpx.Response(200, json=body))
+    provider = _provider(lambda request: httpx2.Response(200, json=body))
     try:
         with pytest.raises(DecisionError) as error:
             await provider.ask({"a": DecisionBooleanQuestion("Ok?")})
@@ -1041,12 +1041,12 @@ async def test_failure_logs_omit_urls_and_exception_content(failure, caplog):
 
     def handler(request):
         if failure == "network":
-            raise httpx.ConnectError(secret)
+            raise httpx2.ConnectError(secret)
         if failure == "timeout":
-            raise httpx.ReadTimeout(secret)
+            raise httpx2.ReadTimeout(secret)
         if failure == "json":
-            return httpx.Response(200, content=secret.encode())
-        return httpx.Response(503, json={"error": {"message": secret, "code": secret, "type": secret}})
+            return httpx2.Response(200, content=secret.encode())
+        return httpx2.Response(503, json={"error": {"message": secret, "code": secret, "type": secret}})
 
     provider = _provider(
         handler,
@@ -1094,7 +1094,7 @@ async def test_score_matches_probability_weighted_levels(distribution, score, ac
         for i, probability in enumerate(distribution)
     ]
     provider = _provider(
-        lambda request: httpx.Response(
+        lambda request: httpx2.Response(
             200,
             json=_decision(_score(score=score, probabilities=list(reversed(probabilities)))),
         )

@@ -1,7 +1,7 @@
 import base64
 from pathlib import Path
 
-import httpx
+import httpx2
 
 from astrbot import logger
 from astrbot.core.utils.astrbot_path import get_astrbot_temp_path
@@ -48,15 +48,16 @@ def get_temp_dir() -> Path:
     return temp_dir
 
 
-def create_http_client(timeout: int | None, proxy: str) -> httpx.AsyncClient:
+def create_http_client(timeout: int | None, proxy: str) -> httpx2.AsyncClient:
     client_kwargs: dict = {
         "timeout": timeout,
+        "http2": True,
         "follow_redirects": True,
     }
     if proxy:
         logger.info("[MiMo API] Using proxy: %s", proxy)
         client_kwargs["proxy"] = proxy
-    return httpx.AsyncClient(**client_kwargs)
+    return httpx2.AsyncClient(**client_kwargs)
 
 
 def build_api_url(api_base: str) -> str:

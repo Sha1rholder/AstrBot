@@ -1,7 +1,7 @@
 from datetime import datetime, timezone
 from types import SimpleNamespace
 
-import httpx
+import httpx2
 import pytest
 from fastapi import FastAPI
 
@@ -70,8 +70,8 @@ async def test_dashboard_session_pages_reach_older_sessions_and_preserve_scope(
         assert detail["session"]["created_at"] == "2026-01-01T00:00:00+00:00"
         with pytest.raises(ChatServiceError, match="Permission denied"):
             await chat_service.get_session("owner", "foreign", page_size=50)
-        async with httpx.AsyncClient(
-            transport=httpx.ASGITransport(app=app), base_url="http://test"
+        async with httpx2.AsyncClient(
+            transport=httpx2.ASGITransport(app=app), base_url="http://test"
         ) as client:
             ids = []
             for page in range(1, 6):

@@ -8,7 +8,7 @@ import zipfile
 from pathlib import Path
 
 import certifi
-import httpx
+import httpx2
 
 from astrbot.core import logger
 from astrbot.core.repository import GitHubRepository
@@ -62,8 +62,9 @@ class _RepoZipUpdater:
         """
         self._httpx_verify = certifi.where() if verify is None else verify
 
-    def _create_httpx_client(self, timeout: float = 30.0) -> httpx.AsyncClient:
-        return httpx.AsyncClient(
+    def _create_httpx_client(self, timeout: float = 30.0) -> httpx2.AsyncClient:
+        return httpx2.AsyncClient(
+            http2=True,
             follow_redirects=True,
             timeout=timeout,
             trust_env=True,
@@ -171,7 +172,7 @@ class _RepoZipUpdater:
                         "zipball_url": release["zipball_url"],
                     },
                 )
-        except httpx.HTTPStatusError as e:
+        except httpx2.HTTPStatusError as e:
             response_body = ""
             if e.response is not None:
                 response_body = self._truncate_response_body(e.response.text)

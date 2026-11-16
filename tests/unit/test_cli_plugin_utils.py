@@ -29,6 +29,9 @@ class FakeResponse:
 
 
 class FakeClient:
+    def __init__(self, **kwargs):
+        assert kwargs == {"http2": True}
+
     def __enter__(self):
         return self
 
@@ -56,7 +59,7 @@ def test_download_repository_uses_head_without_metadata_lookup(
 
     class ArchiveClient:
         def __init__(self, **kwargs):
-            assert kwargs == {"follow_redirects": True, "trust_env": True}
+            assert kwargs == {"http2": True, "follow_redirects": True, "trust_env": True}
 
         def __enter__(self):
             return self
@@ -68,7 +71,7 @@ def test_download_repository_uses_head_without_metadata_lookup(
             requested_urls.append(url)
             return ArchiveResponse()
 
-    monkeypatch.setattr("astrbot.cli.utils.plugin.httpx.Client", ArchiveClient)
+    monkeypatch.setattr("astrbot.cli.utils.plugin.httpx2.Client", ArchiveClient)
 
     target_path = tmp_path / "plugin"
     download_repository("https://github.com/example/plugin", target_path)
@@ -97,7 +100,7 @@ def test_build_plug_list_merges_local_and_remote_plugins(monkeypatch, tmp_path):
     write_metadata(tmp_path / "unpublished-plugin", "unpublished-plugin", "1.0.0")
     tmp_path.joinpath("ignored-file").write_text("not a plugin", encoding="utf-8")
 
-    monkeypatch.setattr("astrbot.cli.utils.plugin.httpx.Client", FakeClient)
+    monkeypatch.setattr("astrbot.cli.utils.plugin.httpx2.Client", FakeClient)
 
     plugins = build_plug_list(tmp_path)
     plugins_by_name = {plugin["name"]: plugin for plugin in plugins}
@@ -118,7 +121,7 @@ def test_build_plug_list_treats_unusable_path_as_empty_local_set(
     else:
         plugins_path = tmp_path / "completely_non_existent_path"
 
-    monkeypatch.setattr("astrbot.cli.utils.plugin.httpx.Client", FakeClient)
+    monkeypatch.setattr("astrbot.cli.utils.plugin.httpx2.Client", FakeClient)
 
     plugins = build_plug_list(plugins_path)
 
@@ -127,7 +130,7 @@ def test_build_plug_list_treats_unusable_path_as_empty_local_set(
 
 
 def test_build_plug_list_local_version_equal_or_newer(monkeypatch, tmp_path):
-    monkeypatch.setattr("astrbot.cli.utils.plugin.httpx.Client", FakeClient)
+    monkeypatch.setattr("astrbot.cli.utils.plugin.httpx2.Client", FakeClient)
 
     # 1. test if local version == remote version
     dir_equal = tmp_path / "dir_equal"

@@ -1,8 +1,7 @@
 import re
 from urllib.parse import urlparse
 
-import httpx
-from openai import AsyncOpenAI
+from openai import AsyncOpenAI, DefaultAsyncHttpxClient
 
 from astrbot import logger
 
@@ -30,10 +29,9 @@ class OpenAIEmbeddingProvider(EmbeddingProvider):
         self.provider_settings = provider_settings
         proxy = provider_config.get("proxy", "")
         provider_id = provider_config.get("id", "unknown_id")
-        http_client = None
         if proxy:
             logger.info(f"[OpenAI Embedding] {provider_id} Using proxy: {proxy}")
-            http_client = httpx.AsyncClient(proxy=proxy)
+        http_client = DefaultAsyncHttpxClient(http2=True, proxy=proxy or None)
         api_base = _normalize_api_base(
             provider_config.get("embedding_api_base", "https://api.openai.com/v1")
         )

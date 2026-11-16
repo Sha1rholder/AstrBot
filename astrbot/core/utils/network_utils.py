@@ -3,7 +3,8 @@
 import ssl
 from typing import Any
 
-import httpx
+import httpx as legacy_httpx
+import httpx2
 
 from astrbot import logger
 from astrbot.utils.http_ssl_common import build_ssl_context_with_certifi
@@ -15,7 +16,7 @@ def is_connection_error(exc: BaseException) -> bool:
     """Check if an exception is a connection/network related error.
 
     Uses explicit exception type checking instead of brittle string matching.
-    Handles httpx network errors, timeouts, and common Python network exceptions.
+    Handles httpx2 and legacy SDK network errors, timeouts, and Python exceptions.
 
     Args:
         exc: The exception to check
@@ -23,20 +24,8 @@ def is_connection_error(exc: BaseException) -> bool:
     Returns:
         True if the exception is a connection/network error
     """
-    # Check for httpx network errors
-    if isinstance(
-        exc,
-        (
-            httpx.ConnectError,
-            httpx.ConnectTimeout,
-            httpx.ReadTimeout,
-            httpx.WriteTimeout,
-            httpx.PoolTimeout,
-            httpx.NetworkError,
-            httpx.ProxyError,
-            httpx.RequestError,
-        ),
-    ):
+    # Some SDKs still raise exceptions from the separate legacy httpx namespace.
+    if isinstance(exc, (httpx2.RequestError, legacy_httpx.RequestError)):
         return True
 
     # Check for common Python network errors
@@ -93,9 +82,9 @@ def create_proxy_client(
     proxy: str | None = None,
     headers: dict[str, str] | None = None,
     verify: ssl.SSLContext | str | bool | None = None,
-    httpx_module: Any = httpx,
-) -> httpx.AsyncClient:
-    """Create an httpx AsyncClient with proxy configuration if provided.
+    httpx_module: Any = httpx2,
+) -> httpx2.AsyncClient:
+    """Create an HTTP/2 client with proxy configuration if provided.
 
     Uses a hybrid SSL context that combines the system SSL certificate store
     with certifi as a fallback, ensuring compatibility across different
@@ -110,17 +99,17 @@ def create_proxy_client(
         headers: Optional custom headers to include in every request
         verify: Optional override for TLS verification. Defaults to the hybrid
                 SSL context (system store + certifi) when not provided.
-        httpx_module: Optional httpx module to construct AsyncClient from. This is
+        httpx_module: HTTP client module, defaulting to httpx2. This is
             useful when a provider SDK performs isinstance checks against its own
             httpx import.
 
     Returns:
-        An httpx.AsyncClient created with the hybrid SSL context (system store + certifi); the proxy is applied only if one is provided.
+        An HTTP/2 client using the hybrid SSL context and optional proxy.
     """
     resolved_verify = _SYSTEM_SSL_CTX if verify is None else verify
     if proxy:
         logger.info(f"[{provider_label}] Using proxy: {proxy}")
         return httpx_module.AsyncClient(
-            proxy=proxy, verify=resolved_verify, headers=headers
+            proxy=proxy, verify=resolved_verify, headers=headers, http2=True
         )
-    return httpx_module.AsyncClient(verify=resolved_verify, headers=headers)
+    return httpx_module.AsyncClient(verify=resolved_verify, headers=headers, http2=True)

@@ -6,7 +6,7 @@ import math
 from collections.abc import Mapping
 from typing import Any
 
-import httpx
+import httpx2
 
 from astrbot import logger
 from astrbot.core.utils.network_utils import log_connection_failure
@@ -51,7 +51,7 @@ class SystemOneDecisionProvider(DecisionProvider):
         self,
         provider_config: dict,
         provider_settings: dict,
-        transport: httpx.AsyncBaseTransport | None = None,
+        transport: httpx2.AsyncBaseTransport | None = None,
     ) -> None:
         super().__init__(provider_config, provider_settings)
         raw_base_url = str(provider_config.get("api_base") or "").strip()
@@ -84,7 +84,8 @@ class SystemOneDecisionProvider(DecisionProvider):
         if self.max_concurrency <= 0:
             raise ValueError("max_concurrency must be greater than 0")
         self.request_semaphore = asyncio.Semaphore(self.max_concurrency)
-        self.client = httpx.AsyncClient(
+        self.client = httpx2.AsyncClient(
+            http2=True,
             timeout=self.timeout,
             proxy=self.proxy,
             transport=transport,
@@ -185,12 +186,12 @@ class SystemOneDecisionProvider(DecisionProvider):
             raise DecisionError(
                 f"System One total request timed out after {self.total_timeout:g}s"
             ) from exc
-        except httpx.TimeoutException as exc:
+        except httpx2.TimeoutException as exc:
             log_connection_failure("System One Decision", exc, self.proxy)
             raise DecisionError(
                 f"System One attempt timed out after {self.timeout:g}s"
             ) from exc
-        except httpx.HTTPStatusError as exc:
+        except httpx2.HTTPStatusError as exc:
             logger.error(
                 f"[System One Decision] HTTP {exc.response.status_code} from "
                 f"{self.base_url}"
@@ -198,7 +199,7 @@ class SystemOneDecisionProvider(DecisionProvider):
             raise DecisionError(
                 f"System One endpoint returned HTTP {exc.response.status_code}"
             ) from exc
-        except httpx.RequestError as exc:
+        except httpx2.RequestError as exc:
             log_connection_failure("System One Decision", exc, self.proxy)
             raise DecisionError(
                 "System One request failed: unable to connect (check network or proxy)"

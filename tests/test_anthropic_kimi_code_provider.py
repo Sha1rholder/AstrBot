@@ -72,14 +72,13 @@ def test_anthropic_provider_passes_custom_headers_via_default_headers(monkeypatc
         "User-Agent": "custom-agent/1.0",
         "X-Test-Header": "123",
     }
-    # Custom headers are forwarded via the SDK's `default_headers` parameter,
-    # not via a custom http_client (which is reserved for proxy configuration).
+    # Preserve the SDK's header handling when using a custom HTTP/2 client.
     assert provider.client.kwargs["default_headers"] == {
         "User-Agent": "custom-agent/1.0",
         "X-Test-Header": "123",
         "X-Api-Key": "test-key",
     }
-    assert provider.client.kwargs["http_client"] is None
+    assert provider.client.kwargs["http_client"].headers["X-Test-Header"] == "123"
 
 
 def test_kimi_code_provider_sets_defaults_and_preserves_custom_headers(monkeypatch):
@@ -126,18 +125,17 @@ def test_kimi_code_provider_restores_required_user_agent_when_blank(monkeypatch)
     }
 
 
-def test_create_http_client_returns_none_when_no_proxy(monkeypatch):
-    def fail_if_called(*args, **kwargs):
-        raise AssertionError("create_proxy_client should not be called without a proxy")
-
-    monkeypatch.setattr(anthropic_source, "create_proxy_client", fail_if_called)
-
+@pytest.mark.asyncio
+async def test_create_http_client_enables_http2_without_proxy():
     provider = anthropic_source.ProviderAnthropic.__new__(
         anthropic_source.ProviderAnthropic
     )
     provider.custom_headers = {"X-Trace-Id": "abc"}
 
-    assert provider._create_http_client({"proxy": ""}) is None
+    async with provider._create_http_client({"proxy": ""}) as client:
+        assert client.headers["X-Trace-Id"] == "abc"
+        assert client._transport._pool._http2 is True
+        assert client._transport._pool._http1 is True
 
 
 def test_create_http_client_uses_anthropic_httpx_module(monkeypatch):
@@ -183,7 +181,7 @@ def test_create_http_client_uses_anthropic_httpx_module(monkeypatch):
     assert captured["httpx_module"] is expected_httpx_module
 
 
-def test_create_http_client_falls_back_to_global_httpx_module(monkeypatch):
+def test_create_http_client_falls_back_to_global_httpx2_module(monkeypatch):
     captured: dict[str, object] = {}
 
     def fake_create_proxy_client(
@@ -214,7 +212,7 @@ def test_create_http_client_falls_back_to_global_httpx_module(monkeypatch):
     provider.custom_headers = None
     provider._create_http_client({"proxy": "http://127.0.0.1:7890"})
 
-    assert captured["httpx_module"] is anthropic_source.httpx
+    assert captured["httpx_module"] is anthropic_source.httpx2
 
 
 @pytest.mark.asyncio

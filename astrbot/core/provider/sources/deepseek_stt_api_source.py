@@ -3,7 +3,7 @@ import wave
 from contextlib import suppress
 from pathlib import Path
 
-import httpx
+import httpx2
 
 from astrbot.core.utils.astrbot_path import get_astrbot_temp_path
 from astrbot.core.utils.media_utils import MediaResolver, ensure_wav
@@ -48,7 +48,8 @@ class ProviderDeepSeekSTTAPI(STTProvider):
             for key, value in self.request_headers.items()
             if key.lower() not in {"authorization", "content-type"}
         }
-        self.client = httpx.AsyncClient(
+        self.client = httpx2.AsyncClient(
+            http2=True,
             timeout=float(timeout) if timeout else None,
             proxy=provider_config.get("proxy") or None,
             follow_redirects=True,
@@ -166,7 +167,7 @@ class ProviderDeepSeekSTTAPI(STTProvider):
                         "DeepSeek STT response is missing a string text field"
                     )
                 return data["text"].strip()
-        except httpx.HTTPError as exc:
+        except httpx2.HTTPError as exc:
             raise DeepSeekSTTError("DeepSeek STT request failed") from exc
         finally:
             # Never remove the caller's original audio; this path is unique to us.

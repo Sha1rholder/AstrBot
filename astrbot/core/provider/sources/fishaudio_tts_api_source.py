@@ -3,7 +3,7 @@ import re
 from typing import Annotated, Literal
 
 import ormsgpack
-from httpx import AsyncClient
+from httpx2 import AsyncClient
 from pydantic import BaseModel, conint
 
 from astrbot import logger
@@ -88,6 +88,7 @@ class ProviderFishAudioTTSAPI(TTSProvider):
         """
         sort_options = ["score", "task_count", "created_at"]
         async with AsyncClient(
+            http2=True,
             base_url=self.api_base.replace("/v1", ""),
             proxy=self.proxy if self.proxy else None,
         ) as client:
@@ -154,6 +155,7 @@ class ProviderFishAudioTTSAPI(TTSProvider):
         request = await self._generate_request(text)
         async with (
             AsyncClient(
+                http2=True,
                 base_url=self.api_base,
                 timeout=self.timeout,
                 proxy=self.proxy if self.proxy else None,

@@ -3,7 +3,7 @@ import uuid
 from contextlib import suppress
 from pathlib import Path
 
-import httpx
+import httpx2
 
 from astrbot.core.utils.astrbot_path import get_astrbot_temp_path
 
@@ -40,7 +40,8 @@ class ProviderDeepSeekTTSAPI(TTSProvider):
         timeout = provider_config.get("timeout", 20)
         if isinstance(timeout, str):
             timeout = timeout.strip()
-        self.client = httpx.AsyncClient(
+        self.client = httpx2.AsyncClient(
+            http2=True,
             timeout=float(timeout) if timeout else None,
             proxy=provider_config.get("proxy") or None,
             follow_redirects=True,
@@ -164,7 +165,7 @@ class ProviderDeepSeekTTSAPI(TTSProvider):
                     )
 
             completed = True
-        except (httpx.HTTPError, OSError) as exc:
+        except (httpx2.HTTPError, OSError) as exc:
             raise DeepSeekTTSError(
                 "DeepSeek TTS request or audio transfer failed"
             ) from exc

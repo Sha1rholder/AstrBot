@@ -1,4 +1,4 @@
-from openai import NOT_GIVEN, AsyncOpenAI
+from openai import NOT_GIVEN, AsyncOpenAI, DefaultAsyncHttpxClient
 
 from astrbot.core.utils.media_utils import MediaResolver
 
@@ -26,6 +26,7 @@ class ProviderOpenAIWhisperAPI(STTProvider):
             api_key=self.chosen_api_key,
             base_url=provider_config.get("api_base"),
             timeout=provider_config.get("timeout", NOT_GIVEN),
+            http_client=DefaultAsyncHttpxClient(http2=True),
         )
 
         self.set_model(provider_config["model"])

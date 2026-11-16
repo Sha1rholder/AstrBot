@@ -7,7 +7,7 @@ import re
 from collections.abc import AsyncGenerator
 from typing import Any, Literal
 
-import httpx
+import httpx2
 from openai import AsyncAzureOpenAI, AsyncOpenAI
 from openai._exceptions import NotFoundError
 from openai.lib.streaming.chat._completions import ChatCompletionStreamState
@@ -342,14 +342,25 @@ class ProviderOpenAIOfficial(Provider):
             image_fallback_used,
         )
 
-    def _create_http_client(self, provider_config: dict) -> httpx.AsyncClient:
-        """创建带代理的 HTTP 客户端"""
+    def _create_http_client(self, provider_config: dict) -> httpx2.AsyncClient:
+        """Create an HTTP/2 client using the SDK's HTTP client module.
+
+        Args:
+            provider_config: Provider configuration with an optional proxy.
+
+        Returns:
+            An asynchronous client compatible with the installed OpenAI SDK.
+        """
         proxy = provider_config.get("proxy", "")
-        httpx_module: Any = httpx
+        httpx_module: Any = httpx2
         try:
             from openai import _base_client as openai_base_client
 
-            httpx_module = getattr(openai_base_client, "httpx", httpx)
+            httpx_module = getattr(
+                openai_base_client,
+                "httpx",
+                getattr(openai_base_client, "httpx2", httpx2),
+            )
         except ImportError:
             pass
         return create_proxy_client("OpenAI", proxy, httpx_module=httpx_module)
